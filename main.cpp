@@ -307,6 +307,7 @@ int main()
     set_bit(piece_bitboards[b], f6);
     set_bit(piece_bitboards[n], h8);
     //print_bitboard(piece_bitboards[P]);
+    side = WHITE;
     print_chess_board();
     /*cout<<ascii_pieces[P]<<endl;
     cout<<ascii_pieces[char_pieces['K']];*/
@@ -381,6 +382,7 @@ void print_chess_board(){
             cout<<endl;
         }
     }
+    cout<<' '<<((!side)?"white":"black")<<' ';
 }
 
 U64 mask_pawn_attacks(int side, int square){
