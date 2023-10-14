@@ -1,30 +1,31 @@
 #include <iostream>
-#include <assert.h>
-#include <string.h>
-#include <unordered_map>
-#include <cstring>
-#include "headers/functions.h"
-#include "headers/constants.h"
-#include "headers/magic_numbers.h"
-#include "headers/enums.h"
-#define U64 unsigned long long
-#define BOARD_SIZE 8
-#define WHITE 0
-#define BLACK 1
-#define BOTH 2
+#include "headers/constants.hpp"
+#include "headers/magic_numbers.hpp"
+#include "headers/enums.hpp"
+#include "headers/arrays.hpp"
+#include "namespaces/namespace_staticFuncs.cpp"
+#include "namespaces/namespace_maskPieceFuncs.cpp"
+#include "namespaces/namespace_initializeFuncs.cpp"
+#include "namespaces/namespace_magicNumberFuncs.cpp"
 
 using namespace std;
+using namespace sif;
+using namespace maskPieceFuncs;
+using namespace initializeFuncs;
+using namespace magicNumberFuncs;
 
 int side;
 int enpassant = no_sq;
 int castle;
+
 void print_bitboard(U64 bitboard);
 void print_chess_board();
 void parse_fen(const char *fen);
 
+
 int main()
 {
-    //init_all();
+    init_all();
     //WHITE PAWNS
     /*set_bit(piece_bitboards[P], a2);
     set_bit(piece_bitboards[P], b2);
@@ -62,20 +63,29 @@ int main()
     set_bit(piece_bitboards[q], d8);
     set_bit(piece_bitboards[k], e8);*/
     //print_bitboard(piece_bitboards[R]);
-    /*side = WHITE;
-    castle = wk | wq | bk | bq;*/
+    side = WHITE;
+    castle = wk | wq | bk | bq;
     //print_chess_board();
     /*cout<<ascii_pieces[P]<<endl;
     cout<<ascii_pieces[char_pieces['K']];*/
     //print_bitboard(occupancy);
-    //print_bitboard(get_rook_attacks(e4, occupancy));
+    U64 occupancy = 0ULL;
+    set_bit(occupancy, e5);
+    set_bit(occupancy, f5);
+    set_bit(occupancy, c4);
+    set_bit(occupancy, c2);
+    set_bit(occupancy, e3);
+    set_bit(occupancy, g4);
+    set_bit(occupancy, c6);
+    set_bit(occupancy, g2);
+    print_bitboard(get_queen_attacks(e4, occupancy));
     parse_fen(start_position);
     print_chess_board();
     //print_bitboard(occupancy_bitboards[BLACK]);
     std::cin.get();
     return 0;
 }
-
+ 
 void print_bitboard(U64 bitboard){
     for(int i=0; i<BOARD_SIZE; i++)
     {
@@ -218,5 +228,15 @@ void parse_fen(const char *fen){
     {
         occupancy_bitboards[BLACK] |= piece_bitboards[piece];
     }
-    cout<< "Fen : "<<fen<<endl;
 }
+
+
+
+
+
+
+
+
+
+
+
