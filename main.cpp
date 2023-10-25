@@ -14,9 +14,18 @@ using namespace maskPieceFuncs;
 using namespace initializeFuncs;
 using namespace magicNumberFuncs;
 
-int side;
-int enpassant = no_sq;
-int castle;
+/*
+    binary move bits representation                                 hexadecimal constants
+    
+    0000 0000 0000 0000 0011 1111   source square                   0x3f
+    0000 0000 0000 1111 1100 0000   targetsquare                    0xfc0
+    0000 0000 1111 0000 0000 0000   piece                           0xf000
+    0000 1111 0000 0000 0000 0000   promoted piece                  0xf0000
+    0001 0000 0000 0000 0000 0000   capture flag                    0x100000
+    0010 0000 0000 0000 0000 0000   double pawn push flag           0x200000
+    0100 0000 0000 0000 0000 0000   enpassant flag                  0x400000
+    1000 0000 0000 0000 0000 0000   castling flag                   0x800000
+*/
 
 void print_bitboard(U64 bitboard);
 void print_chess_board();
@@ -26,6 +35,16 @@ void parse_fen(const char *fen);
 int main()
 {
     init_all();
+    parse_fen(tricky_position);
+    print_chess_board();
+    generate_moves();
+    //print_bitboard(occupancy_bitboards[BOTH]);
+    /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
+    cout<<"is e4 attacked by black pawn? "<<((pawn_attacks[WHITE][e4]&piece_bitboards[p])?"yes":"no");*/
+    //print_attacked_squares(WHITE);
+    cin.get();
+    return 0;
+
     //WHITE PAWNS
     /*set_bit(piece_bitboards[P], a2);
     set_bit(piece_bitboards[P], b2);
@@ -63,27 +82,24 @@ int main()
     set_bit(piece_bitboards[q], d8);
     set_bit(piece_bitboards[k], e8);*/
     //print_bitboard(piece_bitboards[R]);
-    side = WHITE;
-    castle = wk | wq | bk | bq;
+    /*side = WHITE;
+    castle = wk | wq | bk | bq;*/
     //print_chess_board();
     /*cout<<ascii_pieces[P]<<endl;
     cout<<ascii_pieces[char_pieces['K']];*/
     //print_bitboard(occupancy);
-    U64 occupancy = 0ULL;
+    /*U64 occupancy = 0ULL;
     set_bit(occupancy, e5);
     set_bit(occupancy, f5);
-    set_bit(occupancy, c4);
-    set_bit(occupancy, c2);
+    set_bit(occupancy, c4);*/
+    /*set_bit(occupancy, c2);
     set_bit(occupancy, e3);
     set_bit(occupancy, g4);
     set_bit(occupancy, c6);
-    set_bit(occupancy, g2);
-    print_bitboard(get_queen_attacks(e4, occupancy));
-    parse_fen(start_position);
-    print_chess_board();
-    //print_bitboard(occupancy_bitboards[BLACK]);
-    std::cin.get();
-    return 0;
+    set_bit(occupancy, g2);*/
+    //print_bitboard(get_queen_attacks(e4, occupancy));
+    //print_bitboard(piece_bitboards[r]);
+    
 }
  
 void print_bitboard(U64 bitboard){
@@ -186,15 +202,15 @@ void parse_fen(const char *fen){
                     j--;
                 }
                 j += offset;
-                *fen++;
+                fen++;
             }
             if(*fen == '/')
             {
-                *fen++;
+                fen++;
             }
         }
     }
-    *fen++;
+    fen++;
     (*fen =='w') ? (side=WHITE): side=BLACK;
     fen += 2;
     while(*fen != ' ')
@@ -207,9 +223,9 @@ void parse_fen(const char *fen){
             case 'q': castle |= bq; break;
             case '-': break;
         }
-        *fen++;
+        fen++;
     }
-    *fen++;
+    fen++;
     if(*fen != '-')
     {
         int j = fen[0] - 'a';
@@ -228,6 +244,8 @@ void parse_fen(const char *fen){
     {
         occupancy_bitboards[BLACK] |= piece_bitboards[piece];
     }
+    occupancy_bitboards[BOTH] |= occupancy_bitboards[WHITE];
+    occupancy_bitboards[BOTH] |= occupancy_bitboards[BLACK];
 }
 
 
