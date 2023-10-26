@@ -35,9 +35,10 @@ void parse_fen(const char *fen);
 int main()
 {
     init_all();
-    parse_fen(tricky_position);
+    parse_fen(white_bishop_and_queen_can_check_position);
     print_chess_board();
     generate_moves();
+
     //print_bitboard(occupancy_bitboards[BOTH]);
     /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
     cout<<"is e4 attacked by black pawn? "<<((pawn_attacks[WHITE][e4]&piece_bitboards[p])?"yes":"no");*/

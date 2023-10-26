@@ -16,7 +16,12 @@ const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
 const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 const char* killer_position = "rnbqkb1r/pp1p1ppp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 const char* cmk_position = "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9";
-const char* promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 b - c3 0 25";
+const char* white_knight_can_check_position = "r2q1rk1/1pp2pp1/p1n5/2b1pN1p/3pP1n1/3P2PK/PPP1NPB1/R1BQ1R2 w - - 0 14";
+const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR b KQkq - 0 3";
+const char* both_side_check_position = "3k2r1/5P2/2b1Pb1r/2N5/R7/1Qpn4/1q2B1p1/3KBN2 w - - 0 1";
+const char* pawn_2_ahead_check_position = "8/6k1/8/1k2p1Pp/2nN1B2/3P2K1/P7/8 b - h6 0 1";
+const char* black_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 b - c3 0 25";
+const char* white_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* castling_position = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
 const char* castling_trying = "r3k2r/8/4B3/8/8/7n/8/R3K2R b KQkq - 0 1";
 const U64 not_a_file = 18374403900871474942ULL;
@@ -63,6 +68,8 @@ const char *square_to_coordinate[] = {
 "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
 "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
 };
+const char white_promotions[] = {'Q', 'R', 'B', 'N'};
+const char black_promotions[] = {'q', 'r', 'b', 'n'};
 char ascii_pieces[12] = {'P','R','N','B','Q','K','p','r','n','b','q','k'};
 unsigned int state = 1804289383;
 

@@ -3,13 +3,80 @@
 #define STATICFUNCS_CPP
 #include "../headers/constants.hpp"
 #include "../headers/arrays.hpp"
+#include <vector>
+#include <string>
+#include <algorithm>
+
 
 int side;
 int enpassant = no_sq;
 int castle;
+using namespace std;
+
+vector<string> legal_moves;
 
 namespace sif{
     //static inline functions
+    static inline void print_vector(vector<string> &v){
+        for(int i = 0; i< v.size(); i++) {
+            cout<<" "<<v[i]<<endl;
+        }
+    }
+    static inline bool sort_check(const string& str){
+        return str.find("check") != string::npos;
+    }
+    static inline bool sort_capture(const string& str) {
+        return str.find("capture") != string::npos;
+    }
+    static inline bool sort_promotion(const string& str) {
+        return str.find("promotion") != string::npos;
+    }
+    static inline void sort_vector(vector<string> &v)
+    {
+        sort(v.begin(), v.end(), [](const string& a, const string& b) 
+        {
+            bool checkA = sort_check(a);
+            bool checkB = sort_check(b);
+            bool containsA = sort_capture(a);
+            bool containsB = sort_capture(b);
+            bool promotionA = sort_promotion(a);
+            bool promotionB = sort_promotion(b); 
+            if (checkA && !checkB)
+            {
+                return true;
+            }
+            else if(!checkA && checkB)
+            {
+                return false;
+            }
+            else
+            {
+                if (containsA && !containsB) 
+                {
+                    return true;
+                } 
+                else if (!containsA && containsB) 
+                {
+                    return false;
+                } 
+                else 
+                {
+                    if (promotionA && !promotionB) 
+                    {
+                        return true;
+                    } 
+                    else if(!promotionA && promotionB)
+                    {
+                        return false;
+                    }
+                    else 
+                    {
+                        return a < b;
+                    }
+                }
+            }
+        });
+    }
     static inline int count_bits(U64 bitboard){
         int count = 0;
         while(bitboard)
@@ -92,7 +159,7 @@ namespace sif{
         }
     }
     static inline void generate_moves(){
-        int source_square, target_square;
+        int source_square, target_square, king;
         U64 bitboard, attacks;
         for(int piece=P; piece<=k; piece++)
         {
@@ -105,27 +172,50 @@ namespace sif{
                     while(bitboard)
                     {
                         source_square = get_1st_bit_index(bitboard);
-                        //cout<<" white pawn : "<<square_to_coordinate[source_square]<<endl;
                         target_square = source_square - 8;
-                        //quite pawn moves
+                        //check and quite pawn moves
                         if(!(target_square < a8) && !get_bit(occupancy_bitboards[BOTH], target_square))
                         {
                             //promotion
                             if(source_square >= a7 && source_square <= h7)
                             {
-                                cout<<" white pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'Q'<<endl;
-                                cout<<" white pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'R'<<endl;
-                                cout<<" white pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'B'<<endl;
-                                cout<<" white pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'N'<<endl;
+                                for(char promotion : white_promotions)
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                                                promotion);
+                                    legal_moves.push_back(move);
+                                }
                             }
                             else
                             {
-                                //1 square ahead
-                                cout<<" white pawn : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
-                                //2 square ahead
+                                //1 square ahead and check
+                                if(piece_bitboards[k] & pawn_attacks[side][target_square])
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    legal_moves.push_back(move);
+                                }
+                                else
+                                {
+                                    //1 square ahead
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    legal_moves.push_back(move);
+                                }
                                 if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
                                 {
-                                    cout<<" double white pawn : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square-8]<<endl;
+                                    if(piece_bitboards[k] & pawn_attacks[side][target_square-8])
+                                    {
+                                        string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]) + "+");
+                                        legal_moves.push_back(move);
+                                    }
+                                    else
+                                    {
+                                        //2 square ahead
+                                        if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
+                                        {
+                                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]));
+                                            legal_moves.push_back(move);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -134,17 +224,31 @@ namespace sif{
                         while (attacks)
                         {
                             target_square = get_1st_bit_index(attacks);
+                            //capture and promotion
                             if(source_square >= a7 && source_square <= h7)
                             {
-                                cout<<" white pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'Q'<<endl;
-                                cout<<" white pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'R'<<endl;
-                                cout<<" white pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'B'<<endl;
-                                cout<<" white pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'N'<<endl;
+                                for(char promotion : white_promotions)
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                                                promotion);
+                                    legal_moves.push_back(move);
+                                }
                             }
                             else
                             {
+                                //1 square ahead and check
+                                if(piece_bitboards[k] & pawn_attacks[side][target_square])
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    legal_moves.push_back(move);
+                                }
                                 //1 square ahead
-                                cout<<" white pawn capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                                else
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    legal_moves.push_back(move);
+                                }
+
                             }
                             delete_bit(attacks, target_square);
                         }
@@ -153,8 +257,17 @@ namespace sif{
                             U64 enpassant_attacks = pawn_attacks[side][source_square] & (1ULL << enpassant);
                             if(enpassant_attacks)
                             {
-                               int target_enpassant = get_1st_bit_index(enpassant_attacks); 
-                               cout<<" white pawn enpassant : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_enpassant]<<endl;
+                                int target_enpassant = get_1st_bit_index(enpassant_attacks); 
+                                if(piece_bitboards[k] & pawn_attacks[side][target_enpassant])
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]) + "+");
+                                    legal_moves.push_back(move);                                    
+                                }
+                                else
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]));
+                                    legal_moves.push_back(move);
+                                }
                             }
                         }
                         delete_bit(bitboard, source_square);
@@ -170,7 +283,8 @@ namespace sif{
                         {
                             if(!is_square_attacked(e1, BLACK) && !is_square_attacked(f1, BLACK))//&& !is_square_attacked(g1, BLACK)
                             {
-                                cout<<" white king side castling is legal : e1g1"<<endl;
+                                string move = "O-O : e1g1";
+                                legal_moves.push_back(move);
                             }
                         }
                     }
@@ -181,7 +295,8 @@ namespace sif{
                         {
                             if(!is_square_attacked(e1, BLACK) && !is_square_attacked(d1, BLACK))//&& !is_square_attacked(c1, BLACK)
                             {
-                                cout<<" white queen side castling is legal : e1c1"<<endl;
+                                string move = "O-O-O : e1c1";
+                                legal_moves.push_back(move);
                             }
                         }
                     }
@@ -195,27 +310,50 @@ namespace sif{
                     while(bitboard)
                     {
                         source_square = get_1st_bit_index(bitboard);
-                        //cout<<" white pawn : "<<square_to_coordinate[source_square]<<endl;
                         target_square = source_square + 8;
-                        //quite pawn moves
+                        //check and quite pawn moves
                         if(!(target_square > h1) && !get_bit(occupancy_bitboards[BOTH], target_square))
                         {
                             //promotion
                             if(source_square >= a2 && source_square <= h2)
                             {
-                                cout<<" black pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'Q'<<endl;
-                                cout<<" black pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'R'<<endl;
-                                cout<<" black pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'B'<<endl;
-                                cout<<" black pawn promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'N'<<endl;
+                                for(char promotion : black_promotions)
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                                                promotion);
+                                    legal_moves.push_back(move);
+                                }
                             }
                             else
                             {
-                                //1 square ahead
-                                cout<<" black pawn : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
-                                //2 square ahead
-                                if((source_square >= a7 && source_square <= h7) && !get_bit(occupancy_bitboards[BOTH], target_square+8))
+                                //1 square ahead and check
+                                if(piece_bitboards[K] & pawn_attacks[side][target_square])
                                 {
-                                    cout<<" black pawn : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square+8]<<endl;
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    legal_moves.push_back(move);
+                                }
+                                else
+                                {
+                                    //1 square ahead
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    legal_moves.push_back(move);
+                                }
+                                if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
+                                {
+                                    if(piece_bitboards[K] & pawn_attacks[side][target_square-8])
+                                    {
+                                        string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]) + "+");
+                                        legal_moves.push_back(move);
+                                    }
+                                    else
+                                    {
+                                        //2 square ahead
+                                        if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
+                                        {
+                                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]));
+                                            legal_moves.push_back(move);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -226,15 +364,27 @@ namespace sif{
                             target_square = get_1st_bit_index(attacks);
                             if(source_square >= a2 && source_square <= h2)
                             {
-                                cout<<" black pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'Q'<<endl;
-                                cout<<" black pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'R'<<endl;
-                                cout<<" black pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'B'<<endl;
-                                cout<<" black pawn capture promotion : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<'N'<<endl;
+                                for(char promotion : black_promotions)
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                                                promotion);
+                                    legal_moves.push_back(move);
+                                }
                             }
                             else
                             {
+                                //1 square ahead and check
+                                if(piece_bitboards[K] & pawn_attacks[side][target_square])
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    legal_moves.push_back(move);
+                                }
                                 //1 square ahead
-                                cout<<" black pawn capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                                else
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    legal_moves.push_back(move);
+                                }
                             }
                             delete_bit(attacks, target_square);
                         }
@@ -243,8 +393,17 @@ namespace sif{
                             U64 enpassant_attacks = pawn_attacks[side][source_square] & (1ULL << enpassant);
                             if(enpassant_attacks)
                             {
-                               int target_enpassant = get_1st_bit_index(enpassant_attacks); 
-                               cout<<" black pawn enpassant : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_enpassant]<<endl;
+                                int target_enpassant = get_1st_bit_index(enpassant_attacks); 
+                                if(piece_bitboards[K] & pawn_attacks[side][target_enpassant])
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]) + "+");
+                                    legal_moves.push_back(move);                                    
+                                }
+                                else
+                                {
+                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]));
+                                    legal_moves.push_back(move);
+                                }
                             }
                         }
                         delete_bit(bitboard, source_square);
@@ -260,7 +419,8 @@ namespace sif{
                         {
                             if(!is_square_attacked(e8, WHITE) && !is_square_attacked(f8, WHITE)) //&& !is_square_attacked(g8, WHITE)
                             {
-                                cout<<" black king side castling is legal : e8g8"<<endl;
+                                string move = "O-O : e8g8";
+                                legal_moves.push_back(move);
                             }
                         }
                     }
@@ -271,14 +431,17 @@ namespace sif{
                         {
                             if(!is_square_attacked(e8, WHITE) && !is_square_attacked(d8, WHITE))//&& !is_square_attacked(c8, WHITE)
                             {
-                                cout<<" black queen side castling is legal : e8c8"<<endl;
+                                string move = "O-O-O : e8c8";
+                                legal_moves.push_back(move);
                             }
                         }
                     }
                 }
             }
+            
+            
             //knigt moves
-            if((side == WHITE)?piece == N: piece == n)
+            if((side == WHITE)?(piece == N || king ==k):( piece == n || king == K))
             {
                 while(bitboard)
                 {
@@ -287,25 +450,33 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //quiet move
-                        if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        //capture and check
+                        if(piece_bitboards[king] & knight_attacks[target_square])
                         {
-                            cout<<" knight quite : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            legal_moves.push_back(move);
+                        }
+                        //quiet move
+                        else if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        {
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
                         //capture move
                         else
                         {
-                            cout<<" knight capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
-                        //cout<< " beyaz at : "<<target_square<<endl;
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
             //bishop moves
-            if((side == WHITE)?piece == B: piece == b)
+            if((side == WHITE)?(piece == B || king ==k):(piece == b || king == K))
             {
+                cout<<"piece : "<<piece<<" king : "<<king<<endl;
                 while(bitboard)
                 {
                     source_square = get_1st_bit_index(bitboard);
@@ -313,24 +484,31 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //quiet move
-                        if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        //capture and check
+                        if(piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            cout<<" bishop quite : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            legal_moves.push_back(move);
+                        }
+                        //quiet move
+                        else if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        {
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
                         //capture move
                         else
                         {
-                            cout<<" bishop capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
-                        //cout<< " beyaz at : "<<target_square<<endl;
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
             //rook moves
-            if((side == WHITE)?piece == R: piece == r)
+            if((side == WHITE)?(piece == R || king ==k):(piece == r || king == K))
             {
                 while(bitboard)
                 {
@@ -339,24 +517,31 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //quiet move
-                        if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        //takes and check
+                        if(piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            cout<<" rook quite : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            legal_moves.push_back(move);
+                        }
+                        //quiet move
+                        else if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        {
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
                         //capture move
                         else
                         {
-                            cout<<" rook capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
-                        //cout<< " beyaz at : "<<target_square<<endl;
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
             //queen moves
-            if((side == WHITE)?piece == Q: piece == q)
+            if((side == WHITE)?(piece == Q && king ==k): (piece == q && king ==K))//BOZUKKKKKKKKKKKKKKKKKKKKK
             {
                 while(bitboard)
                 {
@@ -365,17 +550,24 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //quiet move
-                        if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        //takes and check
+                        if(piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            cout<<" queen quite : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            legal_moves.push_back(move);
+                        }
+                        //quiet move
+                        else if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        {
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
                         //capture move
                         else
                         {
-                            cout<<" queen capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
-                        //cout<< " beyaz at : "<<target_square<<endl;
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
@@ -394,20 +586,23 @@ namespace sif{
                         //quiet move
                         if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
                         {
-                            cout<<" bishop quite : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
                         //capture move
                         else
                         {
-                            cout<<" bishop capture : "<<square_to_coordinate[source_square]<<square_to_coordinate[target_square]<<endl;
+                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            legal_moves.push_back(move);
                         }
-                        //cout<< " beyaz at : "<<target_square<<endl;
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
         }
+        sort_vector(legal_moves);
+        print_vector(legal_moves);
     }
 }
 #endif
