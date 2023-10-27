@@ -17,19 +17,48 @@ vector<string> legal_moves;
 
 namespace sif{
     //static inline functions
+    static inline void add_move(moves *move_list, int move)
+    {
+        move_list->moves[move_list->count] = move;
+        move_list->count++;
+    }
     static inline void print_vector(vector<string> &v){
         for(int i = 0; i< v.size(); i++) {
             cout<<" "<<v[i]<<endl;
         }
     }
+    static inline void print_2d_vector(vector<vector<string>> &v){
+        for (int i = 0; i < v.size(); i++)  
+        { 
+            for (int j = 0; j < v[i].size(); j++) 
+            { 
+                cout<<" "<< v[i][j] << " "; 
+            }     
+            cout << endl; 
+        } 
+    }
+    static inline void print_array(string a[], int count){
+        for(int i=0; i<count; i++)
+        {
+            cout<<" "<<a[i]<<endl;
+        }
+    }
     static inline bool sort_check(const string& str){
-        return str.find("check") != string::npos;
+        return str.find("+") != string::npos;
     }
     static inline bool sort_capture(const string& str) {
-        return str.find("capture") != string::npos;
+        return str.find("x") != string::npos;
     }
     static inline bool sort_promotion(const string& str) {
-        return str.find("promotion") != string::npos;
+        string is_promotion_square = str.substr(str.length() - 1);
+        if(is_promotion_square == "Q" || is_promotion_square == "N" || is_promotion_square == "B" || is_promotion_square == "R") return 1;
+        else return 0;
+    }
+    static inline bool sort_center_squares(const string& str){
+        string is_center_square = str.substr(str.length() - 2);
+        if(is_center_square == "d4" || is_center_square == "d5" || is_center_square == "e4" || is_center_square == "e5") return 1;
+        else return 0;
+        //return is_center_square;
     }
     static inline void sort_vector(vector<string> &v)
     {
@@ -37,10 +66,12 @@ namespace sif{
         {
             bool checkA = sort_check(a);
             bool checkB = sort_check(b);
-            bool containsA = sort_capture(a);
-            bool containsB = sort_capture(b);
+            bool captureA = sort_capture(a);
+            bool captureB = sort_capture(b);
             bool promotionA = sort_promotion(a);
             bool promotionB = sort_promotion(b); 
+            bool centerA = sort_center_squares(a);
+            bool centerB = sort_center_squares(b);
             if (checkA && !checkB)
             {
                 return true;
@@ -51,11 +82,11 @@ namespace sif{
             }
             else
             {
-                if (containsA && !containsB) 
+                if (captureA && !captureB) 
                 {
                     return true;
                 } 
-                else if (!containsA && containsB) 
+                else if (!captureA && captureB) 
                 {
                     return false;
                 } 
@@ -71,7 +102,18 @@ namespace sif{
                     }
                     else 
                     {
-                        return a < b;
+                        if(centerA && !centerB)
+                        {
+                            return true;
+                        }
+                        else if(!centerA && centerB)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return a < b;
+                        }
                     }
                 }
             }
@@ -158,8 +200,12 @@ namespace sif{
             }
         }
     }
-    static inline void generate_moves(){
+    static inline void generate_moves(moves *move_list){
+        move_list->count = 0;
         int source_square, target_square, king;
+        int check_count = 0, center_captures_count = 0, promote_captures_count = 0, 
+                captures_count = 0, centers_count = 0, promotions_count = 0, others_count = 0 ;
+        king = (side == WHITE) ? k : K; 
         U64 bitboard, attacks;
         for(int piece=P; piece<=k; piece++)
         {
@@ -179,18 +225,29 @@ namespace sif{
                             //promotion
                             if(source_square >= a7 && source_square <= h7)
                             {
-                                for(char promotion : white_promotions)
+                                /*for(int promotion : promoted_piece) PROMOTİON SON HARFİ DÖNGÜYLE DE YAPILABİLİR
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                    /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
                                                                 promotion);
                                     legal_moves.push_back(move);
-                                }
+                                    int new_move = encode_move(source_square, target_square, piece, promotion, 0, 0, 0, 0);
+
+                                    add_move(move_list, new_move);
+                                    /*add_move(move_list, new_move_2);
+                                    add_move(move_list, new_move_3);
+                                    add_move(move_list, new_move_4);
+                                }*/
+                                add_move(move_list, encode_move(source_square, target_square, piece, Q, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, R, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, B, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, N, 0, 0, 0, 0));
                             }
                             else
                             {
                                 //1 square ahead and check
                                 if(piece_bitboards[k] & pawn_attacks[side][target_square])
                                 {
+                                    
                                     string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);
                                 }
@@ -229,23 +286,23 @@ namespace sif{
                             {
                                 for(char promotion : white_promotions)
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_square]) + 
                                                                 promotion);
                                     legal_moves.push_back(move);
                                 }
                             }
                             else
                             {
-                                //1 square ahead and check
+                                //1 square ahead capture and check
                                 if(piece_bitboards[k] & pawn_attacks[side][target_square])
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);
                                 }
-                                //1 square ahead
+                                //1 square ahead capture
                                 else
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);
                                 }
 
@@ -260,12 +317,12 @@ namespace sif{
                                 int target_enpassant = get_1st_bit_index(enpassant_attacks); 
                                 if(piece_bitboards[k] & pawn_attacks[side][target_enpassant])
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]) + "+");
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_enpassant]) + "+");
                                     legal_moves.push_back(move);                                    
                                 }
                                 else
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]));
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]));
                                     legal_moves.push_back(move);
                                 }
                             }
@@ -366,7 +423,7 @@ namespace sif{
                             {
                                 for(char promotion : black_promotions)
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + 
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_square]) + 
                                                                 promotion);
                                     legal_moves.push_back(move);
                                 }
@@ -376,13 +433,13 @@ namespace sif{
                                 //1 square ahead and check
                                 if(piece_bitboards[K] & pawn_attacks[side][target_square])
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);
                                 }
                                 //1 square ahead
                                 else
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);
                                 }
                             }
@@ -396,12 +453,12 @@ namespace sif{
                                 int target_enpassant = get_1st_bit_index(enpassant_attacks); 
                                 if(piece_bitboards[K] & pawn_attacks[side][target_enpassant])
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]) + "+");
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]) + "+");
                                     legal_moves.push_back(move);                                    
                                 }
                                 else
                                 {
-                                    string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_enpassant]));
+                                    string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]));
                                     legal_moves.push_back(move);
                                 }
                             }
@@ -441,7 +498,7 @@ namespace sif{
             
             
             //knigt moves
-            if((side == WHITE)?(piece == N || king ==k):( piece == n || king == K))
+            if((side == WHITE)?(piece == N ):(piece == n))
             {
                 while(bitboard)
                 {
@@ -449,24 +506,58 @@ namespace sif{
                     attacks = knight_attacks[source_square] & ((side == WHITE)? ~occupancy_bitboards[WHITE]: ~occupancy_bitboards[BLACK]);
                     while (attacks)
                     {
-                        target_square = get_1st_bit_index(attacks);
-                        //capture and check
-                        if(piece_bitboards[king] & knight_attacks[target_square])
-                        {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
-                            legal_moves.push_back(move);
-                        }
+                        target_square = get_1st_bit_index(attacks);                        
                         //quiet move
-                        else if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
+                        /*if(!get_bit(((side == WHITE)?occupancy_bitboards[BLACK]:occupancy_bitboards[WHITE]),target_square))
                         {
                             string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);
+                            //quite check
+                            if(piece_bitboards[king] & knight_attacks[target_square])
+                            {
+                                string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                                legal_moves.push_back(move);
+                            }
                         }
                         //capture move
                         else
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
-                            legal_moves.push_back(move);
+                            //capture check
+                            if(piece_bitboards[king] & knight_attacks[target_square])
+                            {
+                                string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_square]) + "+");
+                                legal_moves.push_back(move);
+                            }
+                            //capture
+                            else
+                            {
+                                string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_square]));
+                                legal_moves.push_back(move);
+                            }
+                            
+                        }*/
+                        string source = square_to_coordinate[source_square];
+                        string target = square_to_coordinate[target_square];
+                        //quite move
+                        if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
+                        {
+                            legal_moves.push_back(source + target);
+                            //quiet check move
+                            if (piece_bitboards[king] & knight_attacks[target_square]) 
+                            {
+                                legal_moves.back() += "+";
+                            }
+                        }
+                        //capture move
+                        else 
+                        {
+                            string capture_move = source + "x" + target;
+                            //capture check move
+                            if (piece_bitboards[king] & knight_attacks[target_square]) 
+                            {
+                                capture_move += "+";
+                            }
+                            legal_moves.push_back(capture_move);
                         }
                         delete_bit(attacks, target_square);    
                     }
@@ -474,9 +565,8 @@ namespace sif{
                 }
             }
             //bishop moves
-            if((side == WHITE)?(piece == B || king ==k):(piece == b || king == K))
+            if((side == WHITE)?(piece == B):(piece == b))
             {
-                cout<<"piece : "<<piece<<" king : "<<king<<endl;
                 while(bitboard)
                 {
                     source_square = get_1st_bit_index(bitboard);
@@ -484,10 +574,33 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //capture and check
+                        string source = square_to_coordinate[source_square];
+                        string target = square_to_coordinate[target_square];
+                        //quite move
+                        if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
+                        {
+                            legal_moves.push_back(source + target);
+                            //quiet check move
+                            if (piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                legal_moves.back() += "+";
+                            }
+                        }
+                        //capture move
+                        else 
+                        {
+                            string capture_move = source + "x" + target;
+                            //capture check move
+                            if (piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                capture_move += "+";
+                            }
+                            legal_moves.push_back(capture_move);
+                        }
+                        /*//capture and check
                         if(piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_square]) + "+");
                             legal_moves.push_back(move);
                         }
                         //quiet move
@@ -499,16 +612,16 @@ namespace sif{
                         //capture move
                         else
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);
-                        }
+                        }*/
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
             //rook moves
-            if((side == WHITE)?(piece == R || king ==k):(piece == r || king == K))
+            if((side == WHITE)?(piece == R):(piece == r))
             {
                 while(bitboard)
                 {
@@ -517,10 +630,33 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //takes and check
+                        string source = square_to_coordinate[source_square];
+                        string target = square_to_coordinate[target_square];
+                        //quite move
+                        if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
+                        {
+                            legal_moves.push_back(source + target);
+                            //quiet check move
+                            if (piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                legal_moves.back() += "+";
+                            }
+                        }
+                        //capture move
+                        else 
+                        {
+                            string capture_move = source + "x" + target;
+                            //capture check move
+                            if (piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                capture_move += "+";
+                            }
+                            legal_moves.push_back(capture_move);
+                        }
+                        /*//capture and check
                         if(piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                             legal_moves.push_back(move);
                         }
                         //quiet move
@@ -532,16 +668,16 @@ namespace sif{
                         //capture move
                         else
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);
-                        }
+                        }*/
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
                 }
             }
             //queen moves
-            if((side == WHITE)?(piece == Q && king ==k): (piece == q && king ==K))//BOZUKKKKKKKKKKKKKKKKKKKKK
+            if((side == WHITE)?(piece == Q): (piece == q))
             {
                 while(bitboard)
                 {
@@ -550,10 +686,33 @@ namespace sif{
                     while (attacks)
                     {
                         target_square = get_1st_bit_index(attacks);
-                        //takes and check
+                        string source = square_to_coordinate[source_square];
+                        string target = square_to_coordinate[target_square];
+                        //quite move
+                        if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
+                        {
+                            legal_moves.push_back(source + target);
+                            //quiet check move
+                            if (piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                legal_moves.back() += "+";
+                            }
+                        }
+                        //capture move
+                        else 
+                        {
+                            string capture_move = source + "x" + target;
+                            //capture check move
+                            if (piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH])) 
+                            {
+                                capture_move += "+";
+                            }
+                            legal_moves.push_back(capture_move);
+                        }
+                        /*//capture and check
                         if(piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH]))
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                             legal_moves.push_back(move);
                         }
                         //quiet move
@@ -565,9 +724,9 @@ namespace sif{
                         //capture move
                         else
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);
-                        }
+                        }*/
                         delete_bit(attacks, target_square);    
                     }
                     delete_bit(bitboard, source_square);    
@@ -592,7 +751,7 @@ namespace sif{
                         //capture move
                         else
                         {
-                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
+                            string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);
                         }
                         delete_bit(attacks, target_square);    
@@ -603,6 +762,7 @@ namespace sif{
         }
         sort_vector(legal_moves);
         print_vector(legal_moves);
+        //print_2d_vector(sortedMoves);
     }
 }
 #endif

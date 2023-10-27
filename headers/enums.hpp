@@ -23,5 +23,8 @@ unordered_map<char, int> char_pieces = {
     {'P', P}, {'R', R}, {'N', N}, {'B', B}, {'Q', Q}, {'K', K},
     {'p', p}, {'r', r}, {'n', n}, {'b', b}, {'q', q}, {'k', k}
 };
-
+unordered_map<int, char> promoted_piece = {
+    {Q, 'q'}, {R, 'r'}, {B, 'b'}, {N, 'n'}, {q, 'q'}, {r, 'r'},
+    {b, 'b'}, {n, 'n'} 
+};
 #endif

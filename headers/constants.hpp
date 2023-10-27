@@ -2,6 +2,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <vector>
+#include <string>
+
 #define BOARD_SIZE 8
 #define WHITE 0
 #define BLACK 1
@@ -10,17 +13,41 @@
 #define get_bit(bitboard, square) ((bitboard & (1ULL << square))?1:0)
 #define set_bit(bitboard, square) (bitboard |= (1ULL << square))
 #define delete_bit(bitboard, square) ((bitboard) &= ~(1ULL << (square)))
-
+#define encode_move(source, target, piece, promoted, capture, doublepawn, enpassant, castling)\
+        (source) |          \
+        (target << 6) |     \
+        (piece << 12) |     \
+        (promoted << 16) |     \
+        (capture << 20) |     \
+        (doublepawn << 21) |     \
+        (enpassant << 22) |     \
+        (castling << 23)      \
+//extract source square
+#define get_move_source(move) (move & 0x3f)
+//extract target square
+#define get_move_target(move) ((move & 0xfc0)>>6)
+//extract piece
+#define get_move_piece(move) ((move & 0xf000)>>12)
+//extract promoted
+#define get_move_promoted(move) ((move & 0xf0000)>>16)
+//extract capture
+#define get_move_capture(move) (move & 0x100000)
+//extract doublepawn
+#define get_move_doublepawn(move) (move & 0x200000)
+//extract enpassant
+#define get_move_enpassant(move) (move & 0x400000)
+//extract doublepawn
+#define get_move_castling(move) (move & 0x800000)
 const char* empty_board = "8/8/8/8/8/8/8/8 w - - ";
 const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 const char* killer_position = "rnbqkb1r/pp1p1ppp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 const char* cmk_position = "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9";
-const char* white_knight_can_check_position = "r2q1rk1/1pp2pp1/p1n5/2b1pN1p/3pP1n1/3P2PK/PPP1NPB1/R1BQ1R2 w - - 0 14";
-const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR b KQkq - 0 3";
+const char* white_knight_can_check_position = "r1q3k1/1Pp2N2/2N1b1pr/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
+const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 0 3";
 const char* both_side_check_position = "3k2r1/5P2/2b1Pb1r/2N5/R7/1Qpn4/1q2B1p1/3KBN2 w - - 0 1";
-const char* pawn_2_ahead_check_position = "8/6k1/8/1k2p1Pp/2nN1B2/3P2K1/P7/8 b - h6 0 1";
-const char* black_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 b - c3 0 25";
+const char* pawn_2_ahead_check_position = "8/6k1/5n2/4ppPp/3N1B2/3P2K1/P7/8 w - h6 0 1";
+const char* black_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Ppp4/2N1b1p1/4Pp1p/2Pp2nP/2nP1PP1/p5B1/1NBQ1RK1 b - - 0 25";
 const char* white_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* castling_position = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
 const char* castling_trying = "r3k2r/8/4B3/8/8/7n/8/R3K2R b KQkq - 0 1";
@@ -72,5 +99,16 @@ const char white_promotions[] = {'Q', 'R', 'B', 'N'};
 const char black_promotions[] = {'q', 'r', 'b', 'n'};
 char ascii_pieces[12] = {'P','R','N','B','Q','K','p','r','n','b','q','k'};
 unsigned int state = 1804289383;
-
+std::string checks[64];
+std::string center_captures[64];
+std::string promote_captures[64];
+std::string captures[64];
+std::string centers[64];
+std::string promotion_moves[64];
+std::string others[64];
+typedef struct 
+{
+    int moves[256];
+    int count;
+}moves;
 #endif

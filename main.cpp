@@ -1,4 +1,6 @@
 #include <iostream>
+#include <chrono>
+
 #include "headers/constants.hpp"
 #include "headers/magic_numbers.hpp"
 #include "headers/enums.hpp"
@@ -27,6 +29,12 @@ using namespace magicNumberFuncs;
     1000 0000 0000 0000 0000 0000   castling flag                   0x800000
 */
 
+
+
+
+    
+void print_move_list(moves *move_list);
+void print_move(int move);
 void print_bitboard(U64 bitboard);
 void print_chess_board();
 void parse_fen(const char *fen);
@@ -34,10 +42,42 @@ void parse_fen(const char *fen);
 
 int main()
 {
+    
     init_all();
-    parse_fen(white_bishop_and_queen_can_check_position);
+    parse_fen(white_promotion_position_with_enpassant_and_captures);
     print_chess_board();
-    generate_moves();
+    moves move_list[1];
+    move_list->count = 0;
+    add_move(move_list, encode_move(d7, e8, P, B, 1, 0, 0, 0));
+    //int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
+    generate_moves(move_list);
+    print_move_list(move_list);
+    /*int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
+    int source_square = get_move_source(move);
+    cout<<" source square : "<<square_to_coordinate[source_square]<<endl;
+    int target_square = get_move_target(move);
+    cout<<" target square : "<<square_to_coordinate[target_square]<<endl;
+    int piece = get_move_piece(move);
+    cout<<" piece : "<<ascii_pieces[piece]<<endl;
+    int promoted = get_move_promoted(move);
+    cout<<" promoted : "<<ascii_pieces[promoted]<<endl;
+    int captured = get_move_capture(move);
+    cout<<" captured : "<<((captured)?"captured":"non-captured")<<endl;
+    int doublepawn = get_move_doublepawn(move);
+    cout<<" double pawn : "<<((doublepawn)?"double pawn":"non-double pawn")<<endl;
+    int enpassant = get_move_enpassant(move);
+    cout<<" double pawn : "<<((enpassant)?"enpassant":"non-enpassant")<<endl;
+    int castling = get_move_castling(move);
+    cout<<" double pawn : "<<((castling)?"castling":"non-castling")<<endl;*/
+    /*auto startTime = chrono::high_resolution_clock::now();
+    for(int i=0; i<10000000; i++)
+    {
+        generate_moves();
+    }
+    auto endTime = chrono::high_resolution_clock::now();
+    chrono::microseconds duration = chrono::duration_cast<chrono::microseconds>(endTime - startTime);
+    cout << " Loop took " << duration.count() << " microseconds" << endl;*/
+
 
     //print_bitboard(occupancy_bitboards[BOTH]);
     /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
@@ -248,8 +288,30 @@ void parse_fen(const char *fen){
     occupancy_bitboards[BOTH] |= occupancy_bitboards[WHITE];
     occupancy_bitboards[BOTH] |= occupancy_bitboards[BLACK];
 }
-
-
+void print_move(int move)
+{
+    cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+}
+void print_move_list(moves *move_list)
+{
+    if(!move_list->count)
+    {
+        cout<<endl<<" No move in the list!"<<endl;
+        return;
+    }
+    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling"<<endl;
+    for(int move_count=0; move_count<move_list->count; move_count++)
+    {
+        int move = move_list->moves[move_count];
+        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<"   "<<
+                        ascii_pieces[get_move_piece(move)]
+                        <<"        "<<(get_move_capture(move)?1:0)
+                        <<"          "<<(get_move_doublepawn(move)?1:0)
+                        <<"             "<<(get_move_enpassant(move)?1:0)
+                        <<"            "<<(get_move_castling(move)?1:0)<<endl<<endl;
+    }
+    cout<<" Total number of moves : "<<move_list->count<<endl;
+}
 
 
 
