@@ -44,14 +44,43 @@ int main()
 {
     
     init_all();
-    parse_fen(white_promotion_position_with_enpassant_and_captures);
+    parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq c6 0 1");
     print_chess_board();
     moves move_list[1];
+    generate_moves(move_list);
+    //print_move_list(move_list);
+    for (int i = 0; i < move_list->count; i++)
+    {
+        //init move
+        int move = move_list->moves[i];
+        //preserve board state
+        copy_board();
+        //make move
+        make_move(move, all_moves);
+        print_chess_board();
+        cin.get();
+        print_move(move);
+        //take back
+        take_back();
+        print_chess_board();
+        cin.get();
+        print_move(move);
+    }
+    
+    /*//preserve board state
+    copy_board();
+    //parse fen
+    parse_fen(empty_board);
+    print_chess_board();
+    //restore board state
+    take_back();
+    print_chess_board();*/
+    /*moves move_list[1];
     move_list->count = 0;
     add_move(move_list, encode_move(d7, e8, P, B, 1, 0, 0, 0));
     //int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
     generate_moves(move_list);
-    print_move_list(move_list);
+    print_move_list(move_list);*/
     /*int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
     int source_square = get_move_source(move);
     cout<<" source square : "<<square_to_coordinate[source_square]<<endl;
@@ -303,12 +332,12 @@ void print_move_list(moves *move_list)
     for(int move_count=0; move_count<move_list->count; move_count++)
     {
         int move = move_list->moves[move_count];
-        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<"   "<<
+        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<(get_move_promoted(move)?promoted_piece[get_move_promoted(move)]:' ')<<"   "<<
                         ascii_pieces[get_move_piece(move)]
                         <<"        "<<(get_move_capture(move)?1:0)
                         <<"          "<<(get_move_doublepawn(move)?1:0)
                         <<"             "<<(get_move_enpassant(move)?1:0)
-                        <<"            "<<(get_move_castling(move)?1:0)<<endl<<endl;
+                        <<"            "<<(get_move_castling(move)?1:0)<<endl;
     }
     cout<<" Total number of moves : "<<move_list->count<<endl;
 }

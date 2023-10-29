@@ -18,6 +18,7 @@ a1, b1, c1, d1, e1, f1, g1, h1, no_sq
 };
 enum castling{wk=1, wq=2, bk=4, bq=8};
 enum pieces{P, R, N, B, Q, K, p, r, n, b, q, k};
+enum move_types{all_moves, only_captures};
 
 unordered_map<char, int> char_pieces = {
     {'P', P}, {'R', R}, {'N', N}, {'B', B}, {'Q', Q}, {'K', K},

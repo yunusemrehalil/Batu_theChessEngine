@@ -13,6 +13,18 @@
 #define get_bit(bitboard, square) ((bitboard & (1ULL << square))?1:0)
 #define set_bit(bitboard, square) (bitboard |= (1ULL << square))
 #define delete_bit(bitboard, square) ((bitboard) &= ~(1ULL << (square)))
+#define copy_board()                                                                \
+        U64 bitboards_copy[12], occupancies_copy[3];                                \
+        int side_copy, enpassant_copy, castling_copy;                               \
+        memcpy(bitboards_copy, piece_bitboards, sizeof(piece_bitboards));           \
+        memcpy(occupancies_copy, occupancy_bitboards, sizeof(occupancy_bitboards)); \
+        side_copy = side; enpassant_copy = enpassant; castling_copy = castle;       \
+        
+#define take_back()                                                                 \
+        memcpy(piece_bitboards, bitboards_copy, sizeof(bitboards_copy));            \
+        memcpy(occupancy_bitboards, occupancies_copy, sizeof(occupancies_copy));    \
+        side = side_copy; enpassant = enpassant_copy; castle = castling_copy;       \
+
 #define encode_move(source, target, piece, promoted, capture, doublepawn, enpassant, castling)\
         (source) |          \
         (target << 6) |     \
@@ -38,7 +50,7 @@
 #define get_move_enpassant(move) (move & 0x400000)
 //extract doublepawn
 #define get_move_castling(move) (move & 0x800000)
-const char* empty_board = "8/8/8/8/8/8/8/8 w - - ";
+const char* empty_board = "8/8/8/8/8/8/8/8 b - - ";
 const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
 const char* killer_position = "rnbqkb1r/pp1p1ppp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
