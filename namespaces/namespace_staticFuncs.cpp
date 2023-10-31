@@ -5,6 +5,7 @@
 #include "../headers/arrays.hpp"
 #include <vector>
 #include <string>
+#include <cstring>
 #include <algorithm>
 
 
@@ -821,7 +822,7 @@ namespace sif{
             int source_square = get_move_source(move);
             int target_square = get_move_target(move);
             int piece = get_move_piece(move);
-            int promoted = get_move_promoted(move);
+            int promoted_piece = get_move_promoted(move);
             int capture = get_move_capture(move);
             int doublepawn = get_move_doublepawn(move);
             int enpassant_parse = get_move_enpassant(move);
@@ -829,7 +830,124 @@ namespace sif{
             //move piece
             delete_bit(piece_bitboards[piece], source_square);
             set_bit(piece_bitboards[piece], target_square);
+            //handling capture moves
+            if(capture)
+            {
+                //pick up bitboard piece index ranges depending on side
+                int start_piece, end_piece;
+                if(side == WHITE)
+                {
+                    start_piece = p;
+                    end_piece = k;
+                }
+                else
+                {
+                    start_piece = P;
+                    end_piece = K;
+                }
+                for(int bb_piece = start_piece; bb_piece<=end_piece; bb_piece++)
+                {
+                    if(get_bit(piece_bitboards[bb_piece], target_square))
+                    {
+                        delete_bit(piece_bitboards[bb_piece], target_square);
+                        break;
+                    }
+                }
+            }
+            //handling promotions
+            if(promoted_piece)
+            {
+                //erase the pawn from the target square
+                delete_bit(piece_bitboards[(side==WHITE)?P:p], target_square);
+                //set up promoted piece to board
+                set_bit(piece_bitboards[promoted_piece], target_square);
+            }
+            //handle enpassant captures
+            if(enpassant_parse)
+            {
+                (side==WHITE)?delete_bit(piece_bitboards[p], target_square+8):delete_bit(piece_bitboards[P], target_square-8);
+            }
+            enpassant = no_sq;
+            //handle double pawn and enpassant
+            if(doublepawn)
+            {
+                //set enpassant square
+                (side==WHITE)?(enpassant = target_square +8):(enpassant = target_square -8);
+            }
+            //handle castling
+            if(castle_parse)
+            {
+                switch(target_square)
+                {
+                //wk
+                case(g1):
+                    delete_bit(piece_bitboards[R], h1);
+                    set_bit(piece_bitboards[R], f1);
+                    break;
+                //wq
+                case(c1):
+                    delete_bit(piece_bitboards[R], a1);
+                    set_bit(piece_bitboards[R], d1);
+                    break;
+                //bk
+                case(g8):
+                    delete_bit(piece_bitboards[r], h8);
+                    set_bit(piece_bitboards[r], f8);
+                    break;
+                //bq
+                case(c8):
+                    delete_bit(piece_bitboards[r], a8);
+                    set_bit(piece_bitboards[r], d8);
+                    break;
+                }
+            }
+            //update castling rights
+            castle &= castling_rights[source_square];
+            castle &= castling_rights[target_square];
+            //reset occupancies
+            memset(occupancy_bitboards, 0ULL, sizeof(occupancy_bitboards));
+            //loop over white pieces bitboard
+            for(int bb_piece =P; bb_piece <=K; bb_piece++)
+            {
+                //update white occupancies
+                occupancy_bitboards[WHITE] |= piece_bitboards[bb_piece];
+            }
+            //loop over black pieces bitboard
+            for(int bb_piece =p; bb_piece <=k; bb_piece++)
+            {
+                //update black occupancies
+                occupancy_bitboards[BLACK] |= piece_bitboards[bb_piece];
+            }
+            //update both side occupancies
+            occupancy_bitboards[BOTH] |= occupancy_bitboards[WHITE];
+            occupancy_bitboards[BOTH] |= occupancy_bitboards[BLACK];
+            //////check control
+            //change side
+            side ^= 1;
+            if(is_square_attacked((side==WHITE)?get_1st_bit_index(piece_bitboards[k]):get_1st_bit_index(piece_bitboards[K]),side))
+            {
+                //take move back
+                take_back();
+                //return illegal move
+                return 0;
+            }
+            else
+            {
+                //return legal move
+                return 1;
+            }
+
         }
+        ////////////
+        /////////////
+        //////////////
+        ///////////////
+        ////////////////
+        ////////////////BURALARDA YANLIS OLABILIRRRRRR
+        ///////////////
+        //////////////
+        ////////////
+        //////////
         //capture moves
         else
         {

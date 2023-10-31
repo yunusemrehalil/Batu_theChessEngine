@@ -28,4 +28,6 @@ unordered_map<int, char> promoted_piece = {
     {Q, 'q'}, {R, 'r'}, {B, 'b'}, {N, 'n'}, {q, 'q'}, {r, 'r'},
     {b, 'b'}, {n, 'n'} 
 };
+
+
 #endif

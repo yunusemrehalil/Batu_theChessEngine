@@ -52,14 +52,21 @@
 #define get_move_castling(move) (move & 0x800000)
 const char* empty_board = "8/8/8/8/8/8/8/8 b - - ";
 const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
 const char* killer_position = "rnbqkb1r/pp1p1ppp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 const char* cmk_position = "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9";
+const char* random_position = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+const char* after_starting_moves_position = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8 ";
+const char* middle_game = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ";
+const char* wrong_position = "1N6/6k1/8/8/7B/8/8/4K3 w - - 19 103";
+const char* trying_position = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+const char* end_game = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
+const char* end_game_2 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
 const char* white_knight_can_check_position = "r1q3k1/1Pp2N2/2N1b1pr/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 0 3";
 const char* both_side_check_position = "3k2r1/5P2/2b1Pb1r/2N5/R7/1Qpn4/1q2B1p1/3KBN2 w - - 0 1";
 const char* pawn_2_ahead_check_position = "8/6k1/5n2/4ppPp/3N1B2/3P2K1/P7/8 w - h6 0 1";
-const char* black_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Ppp4/2N1b1p1/4Pp1p/2Pp2nP/2nP1PP1/p5B1/1NBQ1RK1 b - - 0 25";
+const char* black_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Ppp4/2N1b1p1/4Pp1p/1nPp2nP/3P1PP1/p5B1/1NBQ1RK1 b - c3 0 25";
 const char* white_promotion_position_with_enpassant_and_captures = "r1q2rk1/1Pp5/2N1b1p1/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* castling_position = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
 const char* castling_trying = "r3k2r/8/4B3/8/8/7n/8/R3K2R b KQkq - 0 1";
@@ -109,6 +116,16 @@ const char *square_to_coordinate[] = {
 };
 const char white_promotions[] = {'Q', 'R', 'B', 'N'};
 const char black_promotions[] = {'q', 'r', 'b', 'n'};
+const int castling_rights[64] = {
+     7, 15, 15, 15,  3, 15, 15, 11,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    13, 15, 15, 15, 12, 15, 15, 14
+};
 char ascii_pieces[12] = {'P','R','N','B','Q','K','p','r','n','b','q','k'};
 unsigned int state = 1804289383;
 std::string checks[64];

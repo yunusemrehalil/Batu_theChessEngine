@@ -29,26 +29,32 @@ using namespace magicNumberFuncs;
     1000 0000 0000 0000 0000 0000   castling flag                   0x800000
 */
 
+/*
+                                        castling    move        binary  decimal
+                                        right       update      
+        king & rook did not move:       1111    &   1111    =   1111    15
+                white king moved:       1111    &   1100    =   1100    12
+     white king's rook not moved:       1111    &   1110    =   1110    14
+   white queens's rook not moved:       1111    &   1101    =   1101    13
+   //////////////////////////////
+                black king moved:       1111    &   0011    =   0011    3
+     black king's rook not moved:       1111    &   1011    =   1011    11
+   black queens's rook not moved:       1111    &   0111    =   0111    7
+*/
 
 
-
-    
-void print_move_list(moves *move_list);
-void print_move(int move);
-void print_bitboard(U64 bitboard);
-void print_chess_board();
-void parse_fen(const char *fen);
-
-
-int main()
+long nodes;
+long cummulative_nodes;
+long old_nodes; 
+static inline void perft_driver(int depth)
 {
-    
-    init_all();
-    parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq c6 0 1");
-    print_chess_board();
+    if(depth == 0)
+    {
+        nodes++;
+        return;
+    }
     moves move_list[1];
     generate_moves(move_list);
-    //print_move_list(move_list);
     for (int i = 0; i < move_list->count; i++)
     {
         //init move
@@ -56,16 +62,63 @@ int main()
         //preserve board state
         copy_board();
         //make move
-        make_move(move, all_moves);
-        print_chess_board();
-        cin.get();
-        print_move(move);
-        //take back
+        if(!make_move(move, all_moves))
+        {
+            continue;
+        }
+        perft_driver(depth-1);
         take_back();
-        print_chess_board();
-        cin.get();
-        print_move(move);
+
     }
+}
+
+void print_move_list(moves *move_list);
+void print_move(int move);
+void print_bitboard(U64 bitboard);
+void print_chess_board();
+void parse_fen(const char *fen);
+
+void perft_test(int depth)
+{   
+    cout<<endl<<" PERFORMANCE TEST"<<endl<<endl;
+    moves move_list[1];
+    generate_moves(move_list);
+    auto startTime = chrono::high_resolution_clock::now();
+    for (int i = 0; i < move_list->count; i++)
+    {
+        int move = move_list->moves[i];
+        copy_board();
+        if(!make_move(move, all_moves))
+        {
+            continue;
+        }
+        cummulative_nodes = nodes;
+        perft_driver(depth-1);
+        old_nodes = nodes - cummulative_nodes;
+        take_back();
+        cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
+                    " | nodes: "<<old_nodes<<endl;
+    }
+    auto endTime = chrono::high_resolution_clock::now();
+    chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+    cout<<endl<<endl<<" Depth: "<<depth<<endl;
+    cout<<" Nodes: "<<nodes<<endl;
+    cout << " Loop took " << duration.count() << " milliseconds" << endl;
+}
+int main()
+{
+    
+    init_all();
+    parse_fen(trying_position);
+    print_chess_board();
+    
+    //print_move_list(move_list);
+    //auto startTime = chrono::high_resolution_clock::now();
+    perft_test(5);
+    /*auto endTime = chrono::high_resolution_clock::now();
+    chrono::microseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
+    /*cout << " Loop took " << duration.count() << " microseconds" << endl;
+    cout << " Nodes : " << nodes << endl;*/
     
     /*//preserve board state
     copy_board();
