@@ -17,16 +17,17 @@ using namespace initializeFuncs;
 using namespace magicNumberFuncs;
 
 /*
-    binary move bits representation                                 hexadecimal constants
-    
-    0000 0000 0000 0000 0011 1111   source square                   0x3f
-    0000 0000 0000 1111 1100 0000   targetsquare                    0xfc0
-    0000 0000 1111 0000 0000 0000   piece                           0xf000
-    0000 1111 0000 0000 0000 0000   promoted piece                  0xf0000
-    0001 0000 0000 0000 0000 0000   capture flag                    0x100000
-    0010 0000 0000 0000 0000 0000   double pawn push flag           0x200000
-    0100 0000 0000 0000 0000 0000   enpassant flag                  0x400000
-    1000 0000 0000 0000 0000 0000   castling flag                   0x800000
+        binary move bits representation                                 hexadecimal constants
+        
+    0000 0000 0000 0000 0000 0011 1111   source square                   0x3f
+    0000 0000 0000 0000 1111 1100 0000   targetsquare                    0xfc0
+    0000 0000 0000 1111 0000 0000 0000   piece                           0xf000
+    0000 0000 1111 0000 0000 0000 0000   promoted piece                  0xf0000
+    0000 0001 0000 0000 0000 0000 0000   capture flag                    0x100000
+    0000 0010 0000 0000 0000 0000 0000   double pawn push flag           0x200000
+    0000 0100 0000 0000 0000 0000 0000   enpassant flag                  0x400000
+    0000 1000 0000 0000 0000 0000 0000   castling flag                   0x800000
+    0001 0000 0000 0000 0000 0000 0000   checking flag                   0x1000000
 */
 
 /*
@@ -109,12 +110,53 @@ int main()
 {
     
     init_all();
-    parse_fen(trying_position);
+    parse_fen(end_game);
     print_chess_board();
-    
+    moves move_list[1];
+    generate_moves(move_list);
+    print_move_list(move_list);
+    perft_test(7);
+    /*moves move_list[1];
+    generate_moves(move_list);
+    print_move_list(move_list);
+    int move = move_list->moves[5];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();
+    generate_moves(move_list);
+    print_move_list(move_list);
+    move = move_list->moves[4];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();
+    move = move_list->moves[3];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();*/
+    /*moves move_list[1];
+    generate_moves(move_list);
+    //print_move_list(move_list);
+    int move = move_list->moves[2];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();
+    generate_moves(move_list);
+    //print_move_list(move_list);
+    move = move_list->moves[4];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();
+    move = move_list->moves[3];
+    print_move(move);
+    make_move(move, all_moves);
+    print_chess_board();*/
+    /*moves move_list[1];
+    generate_moves(move_list);
+    make_move(move_list->moves[1], all_moves);
+    print_move_list(move_list);*/
     //print_move_list(move_list);
     //auto startTime = chrono::high_resolution_clock::now();
-    perft_test(5);
+    //perft_test(6);
     /*auto endTime = chrono::high_resolution_clock::now();
     chrono::microseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
     /*cout << " Loop took " << duration.count() << " microseconds" << endl;
@@ -381,7 +423,7 @@ void print_move_list(moves *move_list)
         cout<<endl<<" No move in the list!"<<endl;
         return;
     }
-    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling"<<endl;
+    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking"<<endl;
     for(int move_count=0; move_count<move_list->count; move_count++)
     {
         int move = move_list->moves[move_count];
@@ -390,7 +432,8 @@ void print_move_list(moves *move_list)
                         <<"        "<<(get_move_capture(move)?1:0)
                         <<"          "<<(get_move_doublepawn(move)?1:0)
                         <<"             "<<(get_move_enpassant(move)?1:0)
-                        <<"            "<<(get_move_castling(move)?1:0)<<endl;
+                        <<"            "<<(get_move_castling(move)?1:0)
+                        <<"            "<<(get_move_checking(move)?1:0)<<endl;
     }
     cout<<" Total number of moves : "<<move_list->count<<endl;
 }

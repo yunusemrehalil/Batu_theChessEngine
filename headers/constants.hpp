@@ -25,7 +25,7 @@
         memcpy(occupancy_bitboards, occupancies_copy, sizeof(occupancies_copy));    \
         side = side_copy; enpassant = enpassant_copy; castle = castling_copy;       \
 
-#define encode_move(source, target, piece, promoted, capture, doublepawn, enpassant, castling)\
+#define encode_move(source, target, piece, promoted, capture, doublepawn, enpassant, castling, checking)\
         (source) |          \
         (target << 6) |     \
         (piece << 12) |     \
@@ -33,7 +33,8 @@
         (capture << 20) |     \
         (doublepawn << 21) |     \
         (enpassant << 22) |     \
-        (castling << 23)      \
+        (castling << 23) |     \
+        (checking << 24)     \
 //extract source square
 #define get_move_source(move) (move & 0x3f)
 //extract target square
@@ -50,6 +51,8 @@
 #define get_move_enpassant(move) (move & 0x400000)
 //extract doublepawn
 #define get_move_castling(move) (move & 0x800000)
+//extract check
+#define get_move_checking(move) (move & 0x1000000)
 const char* empty_board = "8/8/8/8/8/8/8/8 b - - ";
 const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
@@ -60,8 +63,16 @@ const char* after_starting_moves_position = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1N
 const char* middle_game = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ";
 const char* wrong_position = "1N6/6k1/8/8/7B/8/8/4K3 w - - 19 103";
 const char* trying_position = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-const char* end_game = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -";
+const char* my_position = "8/8/4k3/8/2pP4/8/B5K1/8 b - d3 0 1";
+const char* my_Second_position = "8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1";
+const char* my_third_position = "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1";
+const char* end_game = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
 const char* end_game_2 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+const char* end_game_3 = "8/2p5/3p4/KP6/R1r2pPk/4P3/8/8 b - g3 0 3";
+const char* end_game_4 = "1N6/6k1/8/8/7B/8/8/4K3 w - - 0 1";
+const char* end_game_5 = "8/2p5/3p4/KP5r/1R3pPk/8/4P3/8 b - g3 0 1";
+const char* end_game_6 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+const char* end_game_7 = "8/2p5/3p4/KP6/R1r2pPk/4P3/8/8 b - g3 0 3";
 const char* white_knight_can_check_position = "r1q3k1/1Pp2N2/2N1b1pr/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 0 3";
 const char* both_side_check_position = "3k2r1/5P2/2b1Pb1r/2N5/R7/1Qpn4/1q2B1p1/3KBN2 w - - 0 1";

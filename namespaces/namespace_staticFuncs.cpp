@@ -44,8 +44,12 @@ namespace sif{
             cout<<" "<<a[i]<<endl;
         }
     }
-    static inline bool sort_check(const string& str){
-        return str.find("+") != string::npos;
+    static inline bool sort_check(moves *move_list){
+        /*for(int i=0; i<move_list->count; i++)
+        {
+
+        }*/
+        return 0;
     }
     static inline bool sort_capture(const string& str) {
         return str.find("x") != string::npos;
@@ -60,65 +64,6 @@ namespace sif{
         if(is_center_square == "d4" || is_center_square == "d5" || is_center_square == "e4" || is_center_square == "e5") return 1;
         else return 0;
         //return is_center_square;
-    }
-    static inline void sort_vector(vector<string> &v)
-    {
-        sort(v.begin(), v.end(), [](const string& a, const string& b) 
-        {
-            bool checkA = sort_check(a);
-            bool checkB = sort_check(b);
-            bool captureA = sort_capture(a);
-            bool captureB = sort_capture(b);
-            bool promotionA = sort_promotion(a);
-            bool promotionB = sort_promotion(b); 
-            bool centerA = sort_center_squares(a);
-            bool centerB = sort_center_squares(b);
-            if (checkA && !checkB)
-            {
-                return true;
-            }
-            else if(!checkA && checkB)
-            {
-                return false;
-            }
-            else
-            {
-                if (captureA && !captureB) 
-                {
-                    return true;
-                } 
-                else if (!captureA && captureB) 
-                {
-                    return false;
-                } 
-                else 
-                {
-                    if (promotionA && !promotionB) 
-                    {
-                        return true;
-                    } 
-                    else if(!promotionA && promotionB)
-                    {
-                        return false;
-                    }
-                    else 
-                    {
-                        if(centerA && !centerB)
-                        {
-                            return true;
-                        }
-                        else if(!centerA && centerB)
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            return a < b;
-                        }
-                    }
-                }
-            }
-        });
     }
     static inline int count_bits(U64 bitboard){
         int count = 0;
@@ -238,10 +183,10 @@ namespace sif{
                                     add_move(move_list, new_move_3);
                                     add_move(move_list, new_move_4);
                                 }*/
-                                add_move(move_list, encode_move(source_square, target_square, piece, Q, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, R, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, B, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, N, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, Q, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, R, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, B, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, N, 0, 0, 0, 0, 0));
                             }
                             else
                             {
@@ -251,14 +196,14 @@ namespace sif{
                                     
                                     /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
                                 }
                                 else
                                 {
                                     //1 square ahead
                                     /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                                 }
                                 if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
                                 {
@@ -267,16 +212,18 @@ namespace sif{
                                     {
                                         /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]) + "+");
                                         legal_moves.push_back(move);*/
+                                        add_move(move_list, encode_move(source_square, target_square-8, piece, 0, 0, 1, 0, 0, 1));
                                     }
                                     else
                                     {
                                         //2 square ahead
-                                        if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
+                                        add_move(move_list, encode_move(source_square, target_square-8, piece, 0, 0, 1, 0, 0, 0));
+                                        /*if((source_square >= a2 && source_square <= h2) && !get_bit(occupancy_bitboards[BOTH], target_square-8))
                                         {
                                             /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]));
-                                            legal_moves.push_back(move);*/
-                                            add_move(move_list, encode_move(source_square, target_square-8, piece, 0, 0, 1, 0, 0));
-                                        }
+                                            legal_moves.push_back(move);
+                                            add_move(move_list, encode_move(source_square, target_square-8, piece, 0, 0, 1, 0, 0, 0));
+                                        }*/
                                     }
                                 }
                             }
@@ -295,10 +242,10 @@ namespace sif{
                                                                 promotion);
                                     legal_moves.push_back(move);
                                 }*/
-                                add_move(move_list, encode_move(source_square, target_square, piece, Q, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, R, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, B, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, N, 1, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, Q, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, R, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, B, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, N, 1, 0, 0, 0, 0));
                             }
                             else
                             {
@@ -307,14 +254,14 @@ namespace sif{
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                                 }
                                 //1 square ahead capture
                                 else
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
                                 }
 
                             }
@@ -331,14 +278,14 @@ namespace sif{
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" + string(square_to_coordinate[target_enpassant]) + "+");
                                     legal_moves.push_back(move);   */
-                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0));                                 
+                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0, 1)); 
                                 }
                                 //quite enpassant
                                 else
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0));   
+                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0, 0));   
                                 }
                             }
                         }
@@ -357,7 +304,7 @@ namespace sif{
                             {
                                 /*string move = "O-O : e1g1";
                                 legal_moves.push_back(move);*/
-                                add_move(move_list, encode_move(e1, g1, piece, 0, 0, 0, 0, 1));
+                                add_move(move_list, encode_move(e1, g1, piece, 0, 0, 0, 0, 1, 0));
                             }
                         }
                     }
@@ -370,7 +317,7 @@ namespace sif{
                             {
                                 /*string move = "O-O-O : e1c1";
                                 legal_moves.push_back(move);*/
-                                add_move(move_list, encode_move(e1, c1, piece, 0, 0, 0, 0, 1));
+                                add_move(move_list, encode_move(e1, c1, piece, 0, 0, 0, 0, 1, 0));
                             }
                         }
                     }
@@ -397,10 +344,10 @@ namespace sif{
                                                                 promotion);
                                     legal_moves.push_back(move);
                                 }*/
-                                add_move(move_list, encode_move(source_square, target_square, piece, q, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, r, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, b, 0, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, n, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, q, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, r, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, b, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, n, 0, 0, 0, 0, 0));
                             }
                             else
                             {
@@ -409,14 +356,14 @@ namespace sif{
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
                                 }
                                 else
                                 {
                                     //1 square ahead
                                     /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                                 }
                                 if((source_square >= a7 && source_square <= h7) && !get_bit(occupancy_bitboards[BOTH], target_square+8))
                                 {
@@ -425,17 +372,18 @@ namespace sif{
                                     {
                                         /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]) + "+");
                                         legal_moves.push_back(move);*/
-                                        add_move(move_list, encode_move(source_square, target_square+8, piece, 0, 0, 1, 0, 0));
+                                        add_move(move_list, encode_move(source_square, target_square+8, piece, 0, 0, 1, 0, 0, 1));
                                     }
                                     else
                                     {
                                         //2 square ahead
-                                        if((source_square >= a7 && source_square <= h7) && !get_bit(occupancy_bitboards[BOTH], target_square+8))
+                                        add_move(move_list, encode_move(source_square, target_square+8, piece, 0, 0, 1, 0, 0, 0));
+                                        /*if((source_square >= a7 && source_square <= h7) && !get_bit(occupancy_bitboards[BOTH], target_square+8))
                                         {
-                                            /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]));
-                                            legal_moves.push_back(move);*/
-                                            add_move(move_list, encode_move(source_square, target_square+8, piece, 0, 0, 1, 0, 0));
-                                        }
+                                            string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square-8]));
+                                            legal_moves.push_back(move);
+                                            add_move(move_list, encode_move(source_square, target_square+8, piece, 0, 0, 1, 0, 0, 0));
+                                        }*/
                                     }
                                 }
                             }
@@ -453,10 +401,10 @@ namespace sif{
                                                                 promotion);
                                     legal_moves.push_back(move);
                                 }*/
-                                add_move(move_list, encode_move(source_square, target_square, piece, q, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, r, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, b, 1, 0, 0, 0));
-                                add_move(move_list, encode_move(source_square, target_square, piece, n, 1, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, q, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, r, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, b, 1, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, n, 1, 0, 0, 0, 0));
                             }
                             else
                             {
@@ -465,14 +413,14 @@ namespace sif{
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]) + "+");
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                                 }
                                 //1 square capture ahead
                                 else
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                                    add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
                                 }
                             }
                             delete_bit(attacks, target_square);
@@ -482,20 +430,20 @@ namespace sif{
                             U64 enpassant_attacks = pawn_attacks[side][source_square] & (1ULL << enpassant);
                             if(enpassant_attacks)
                             {
-                                int target_enpassant = get_1st_bit_index(enpassant_attacks); 
+                                int target_enpassant = get_1st_bit_index(enpassant_attacks);               
                                 //enpassant and check
                                 if(piece_bitboards[K] & pawn_attacks[side][target_enpassant])
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]) + "+");
                                     legal_moves.push_back(move); */   
-                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0));                                
+                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0, 1)); 
                                 }
                                 //quiet enpassant
                                 else
                                 {
                                     /*string move = string(string(square_to_coordinate[source_square]) + "x" +string(square_to_coordinate[target_enpassant]));
                                     legal_moves.push_back(move);*/
-                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0));
+                                    add_move(move_list, encode_move(source_square, target_enpassant, piece, 0, 1, 0, 1, 0, 0));
                                 }
                             }
                         }
@@ -514,7 +462,7 @@ namespace sif{
                             {
                                 /*string move = "O-O : e8g8";
                                 legal_moves.push_back(move);*/
-                                add_move(move_list, encode_move(e8, g8, piece, 0, 0, 0, 0, 1));
+                                add_move(move_list, encode_move(e8, g8, piece, 0, 0, 0, 0, 1, 0));
                             }
                         }
                     }
@@ -527,7 +475,7 @@ namespace sif{
                             {
                                 /*string move = "O-O-O : e8c8";
                                 legal_moves.push_back(move);*/
-                                add_move(move_list, encode_move(e8, c8, piece, 0, 0, 0, 0, 1));
+                                add_move(move_list, encode_move(e8, c8, piece, 0, 0, 0, 0, 1, 0));
                             }
                         }
                     }
@@ -585,19 +533,22 @@ namespace sif{
                             {
                                 legal_moves.back() += "+";
                             }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                         }
                         //capture move
                         else 
                         {
-                            /*string capture_move = source + "x" + target;
+                            //string capture_move = source + "x" + target;
                             //capture check move
                             if (piece_bitboards[king] & knight_attacks[target_square]) 
                             {
-                                capture_move += "+";
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                             }
-                            legal_moves.push_back(capture_move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                            //legal_moves.push_back(capture_move);
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
+                            }
                         }
                         delete_bit(attacks, target_square);    
                     }
@@ -625,19 +576,23 @@ namespace sif{
                             {
                                 legal_moves.back() += "+";
                             }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                         }
                         //capture move
                         else 
                         {
-                            /*string capture_move = source + "x" + target;
+                            //string capture_move = source + "x" + target;
                             //capture check move
                             if (piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                capture_move += "+";
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                             }
-                            legal_moves.push_back(capture_move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                            /*legal_moves.push_back(capture_move);*/
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
+                            }
+                            
                         }
                         /*//capture and check
                         if(piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH]))
@@ -683,19 +638,22 @@ namespace sif{
                             {
                                 legal_moves.back() += "+";
                             }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                         }
                         //capture move
                         else 
                         {
-                            /*string capture_move = source + "x" + target;
+                            //string capture_move = source + "x" + target;
                             //capture check move
                             if (piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                capture_move += "+";
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                             }
-                            legal_moves.push_back(capture_move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                            /*legal_moves.push_back(capture_move);*/
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
+                            }
                         }
                         /*//capture and check
                         if(piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH]))
@@ -741,19 +699,22 @@ namespace sif{
                             {
                                 legal_moves.back() += "+";
                             }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                         }
                         //capture move
                         else 
                         {
-                            /*string capture_move = source + "x" + target;
+                            //string capture_move = source + "x" + target;
                             //capture check move
                             if (piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                capture_move += "+";
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 1));
                             }
-                            legal_moves.push_back(capture_move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                            /*legal_moves.push_back(capture_move);*/
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
+                            }
                         }
                         /*//capture and check
                         if(piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH]))
@@ -793,14 +754,14 @@ namespace sif{
                         {
                             /*string move = string(string(square_to_coordinate[source_square]) + string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
                         }
                         //capture move
                         else
                         {
                             /*string move = string(string(square_to_coordinate[source_square]) + "x" +  string(square_to_coordinate[target_square]));
                             legal_moves.push_back(move);*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0));
+                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 1, 0, 0, 0, 0));
                         }
                         delete_bit(attacks, target_square);    
                     }
@@ -808,8 +769,8 @@ namespace sif{
                 }
             }
         }
-        sort_vector(legal_moves);
-        print_vector(legal_moves);
+        /*sort_vector(legal_moves);
+        print_vector(legal_moves);*/
         //print_2d_vector(sortedMoves);
     }
     static inline int make_move(int move, int move_flag){
@@ -863,15 +824,21 @@ namespace sif{
                 set_bit(piece_bitboards[promoted_piece], target_square);
             }
             //handle enpassant captures
-            if(enpassant_parse)
+            if(enpassant_parse) //////////////KONTROL ETTTTTTTTTTTT
             {
+                //int kings_square = (side==WHITE)?get_1st_bit_index(piece_bitboards[K]):get_1st_bit_index(piece_bitboards[k]);
                 (side==WHITE)?delete_bit(piece_bitboards[p], target_square+8):delete_bit(piece_bitboards[P], target_square-8);
+                //cout<<endl<<square_to_coordinate[kings_square]<<"  "<<is_square_attacked(kings_square, side)<<endl;
+                /*if(!is_square_attacked(kings_square, side))
+                {
+                    (side==WHITE)?delete_bit(piece_bitboards[p], target_square+8):delete_bit(piece_bitboards[P], target_square-8);
+                    cout<<endl<<square_to_coordinate[kings_square]<<"  "<<is_square_attacked(kings_square, side)<<endl;
+                }*/
             }
             enpassant = no_sq;
             //handle double pawn and enpassant
             if(doublepawn)
             {
-                //set enpassant square
                 (side==WHITE)?(enpassant = target_square +8):(enpassant = target_square -8);
             }
             //handle castling
