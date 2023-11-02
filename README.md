@@ -13,12 +13,23 @@ without sort the moves in 10 MILLION LOOP // Loop took 73855157 microseconds // 
 ###############################################################################################
 
 02/11/2023 Speed Test Results
-Starting Position
-      without sort  Depth: 6
-             		    Nodes: 119060324
-                    Loop took 9548 milliseconds                
-      with sort	    Depth: 6
-                    Nodes: 119060324
-                   	Loop took 15356 milliseconds
+
+Starting Position 
+
+without sort  	Depth: 6
+ 		Nodes: 119060324
+ 		Loop took 9548 milliseconds
+
+with sort	Depth: 6
+ 		Nodes: 119060324
+ 		Loop took 15356 milliseconds
+Middle Game Position
+without sort 	Depth: 5
+ 		Nodes: 98596489
+ 		Loop took 12933 milliseconds 
+
+with sort	Depth: 5
+ 		Nodes: 98596489
+ 		Loop took 16597 milliseconds
 
 ###############################################################################################        
