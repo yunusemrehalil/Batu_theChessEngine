@@ -1,5 +1,7 @@
 #include <iostream>
 #include <chrono>
+#include <bits/stdc++.h>
+
 
 #include "headers/constants.hpp"
 #include "headers/magic_numbers.hpp"
@@ -47,33 +49,10 @@ using namespace magicNumberFuncs;
 long nodes;
 long cummulative_nodes;
 long old_nodes; 
-static inline void perft_driver(int depth)
-{
-    if(depth == 0)
-    {
-        nodes++;
-        return;
-    }
-    moves move_list[1];
-    generate_moves(move_list);
-    for (int i = 0; i < move_list->count; i++)
-    {
-        //init move
-        int move = move_list->moves[i];
-        //preserve board state
-        copy_board();
-        //make move
-        if(!make_move(move, all_moves))
-        {
-            continue;
-        }
-        perft_driver(depth-1);
-        take_back();
-
-    }
-}
+static inline void perft_driver(int depth);
 
 void print_move_list(moves *move_list);
+void sort_move_list(moves *move_list);
 void print_move(int move);
 void print_bitboard(U64 bitboard);
 void print_chess_board();
@@ -87,6 +66,7 @@ void perft_test(int depth)
     auto startTime = chrono::high_resolution_clock::now();
     for (int i = 0; i < move_list->count; i++)
     {
+        sort_move_list(move_list);
         int move = move_list->moves[i];
         copy_board();
         if(!make_move(move, all_moves))
@@ -110,12 +90,13 @@ int main()
 {
     
     init_all();
-    parse_fen(end_game);
+    parse_fen(start_position);
     print_chess_board();
     moves move_list[1];
     generate_moves(move_list);
     print_move_list(move_list);
-    perft_test(7);
+    //sort_move_list(move_list);
+    perft_test(6);
     /*moves move_list[1];
     generate_moves(move_list);
     print_move_list(move_list);
@@ -161,7 +142,6 @@ int main()
     chrono::microseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
     /*cout << " Loop took " << duration.count() << " microseconds" << endl;
     cout << " Nodes : " << nodes << endl;*/
-    
     /*//preserve board state
     copy_board();
     //parse fen
@@ -201,15 +181,12 @@ int main()
     auto endTime = chrono::high_resolution_clock::now();
     chrono::microseconds duration = chrono::duration_cast<chrono::microseconds>(endTime - startTime);
     cout << " Loop took " << duration.count() << " microseconds" << endl;*/
-
-
     //print_bitboard(occupancy_bitboards[BOTH]);
     /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
     cout<<"is e4 attacked by black pawn? "<<((pawn_attacks[WHITE][e4]&piece_bitboards[p])?"yes":"no");*/
     //print_attacked_squares(WHITE);
     cin.get();
     return 0;
-
     //WHITE PAWNS
     /*set_bit(piece_bitboards[P], a2);
     set_bit(piece_bitboards[P], b2);
@@ -263,8 +240,7 @@ int main()
     set_bit(occupancy, c6);
     set_bit(occupancy, g2);*/
     //print_bitboard(get_queen_attacks(e4, occupancy));
-    //print_bitboard(piece_bitboards[r]);
-    
+    //print_bitboard(piece_bitboards[r]);   
 }
  
 void print_bitboard(U64 bitboard){
@@ -437,8 +413,83 @@ void print_move_list(moves *move_list)
     }
     cout<<" Total number of moves : "<<move_list->count<<endl;
 }
+void sort_move_list(moves *move_list){
+    //int n = sizeof(move_list) / sizeof(move_list->moves[0]);
+    int n = move_list->count;
+    //cout<<n<<endl;
+    sort(move_list->moves, (move_list->moves)+n, greater<int>());
+    //cout << "Array after sorting : \n";
+    //for (int i = 0; i < n; ++i)
+        //cout <<i+1<<". hamle: "<<square_to_coordinate[get_move_source(move_list->moves[i])]<<square_to_coordinate[get_move_target(move_list->moves[i])]<<promoted_piece[get_move_promoted(move_list->moves[i])]<< " "<<endl;
+    /*int center_move[64], checking[64], capture[64], promotion[64], j=0,k=0,l=0,m=0;
+    for(int i=0; i<move_list->count; i++)
+    {
+        int move = move_list->moves[i];
+        if (get_move_target(move) == e4 ||
+            get_move_target(move) == e5 ||
+            get_move_target(move) == d4 ||
+            get_move_target(move) == d5)
+            {
+                center_move[j] = move;
+                //center_move[j] = string(square_to_coordinate[get_move_source(move)]);
+                //cout<<" Merkeze Yapilan Hamle:";
+                //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+                //cout<<center_move[j]<<endl;
+                j++;
+            }
+        if(get_move_checking(move))
+        {
+            checking[k] = move;
+            //cout<<" Sah Hamlesi:";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            k++;
+        }
+        if(get_move_capture(move))
+        {
+            capture[l] = move;
+            //cout<<" Alis Hamlesi:";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            l++;
+        }
+        if(get_move_promoted(move))
+        {
+            promotion[m] = move;
+            //cout<<" Promotion Hamlesi";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            m++;
+        }
+        for(int b=0; b<64; b++)
+        {
+            cout<<center_move[b]<<endl;
+        }
+    }*/
+}
+static inline void perft_driver(int depth)
+{
+    if(depth == 0)
+    {
+        nodes++;
+        return;
+    }
+    moves move_list[1];
+    generate_moves(move_list);
+    sort_move_list(move_list);
+    for (int i = 0; i < move_list->count; i++)
+    {
+        //init move
+        int move = move_list->moves[i];
+        //preserve board state
+        copy_board();
+        //make move
+        if(!make_move(move, all_moves))
+        {
+            continue;
+        }
+        perft_driver(depth-1);
+        take_back();
 
-
+    }
+}
 
 
 
