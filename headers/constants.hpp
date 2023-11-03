@@ -9,6 +9,7 @@
 #define WHITE 0
 #define BLACK 1
 #define BOTH 2
+#define NEGATIVEINFINITY -999999
 #define U64 unsigned long long
 #define get_bit(bitboard, square) ((bitboard & (1ULL << square))?1:0)
 #define set_bit(bitboard, square) (bitboard |= (1ULL << square))
@@ -153,6 +154,22 @@ const int castling_rights[64] = {
 };
 char ascii_pieces[12] = {'P','R','N','B','Q','K','p','r','n','b','q','k'};
 unsigned int state = 1804289383;
+int pieceValue[12] = {
+    100,
+    500,
+    300,
+    320,
+    1000,
+    10000,
+    -100,
+    -500,
+    -300,
+    -320,
+    -1000,
+    -10000
+};
+
+
 std::string checks[64];
 std::string center_captures[64];
 std::string promote_captures[64];

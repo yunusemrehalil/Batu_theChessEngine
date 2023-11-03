@@ -15,4 +15,5 @@ U64 piece_bitboards[12];
 U64 occupancy_bitboards[3];
 
 
+
 #endif
