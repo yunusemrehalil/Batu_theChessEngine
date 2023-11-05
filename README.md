@@ -33,8 +33,8 @@
 
 **//www.chessprogramming.org/Perft_Results  Position 2** "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
 
-**in 4 depth** -- Loop took 3764 milliseconds   
-**in 5 depth** -- Loop took 179234 milliseconds  
+**in 4 depth** -- Loop took 3764 milliseconds    
+**in 5 depth** -- Loop took 179234 milliseconds   
 
 ##########
 
@@ -42,10 +42,10 @@
 
 **//Starting Position** "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-**in 6 depth** -- Loop took 991 milliseconds 
-**in 7 depth** -- Loop took 17665 milliseconds
+**in 6 depth** -- Loop took 991 milliseconds    
+**in 7 depth** -- Loop took 17665 milliseconds   
 
 **//www.chessprogramming.org/Perft_Results  Position 2** "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"
 
-**in 5 depth** -- Loop took 3079 milliseconds 
-**in 6 depth** -- Loop took 50249 milliseconds
+**in 5 depth** -- Loop took 3079 milliseconds   
+**in 6 depth** -- Loop took 50249 milliseconds  
