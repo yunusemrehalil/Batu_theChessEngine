@@ -53,8 +53,8 @@ static inline void perft_driver(int depth);
 void parse_fen(const char *fen);
 void perft_test(int depth);
 static int evaluate();
-int search_driver(int depth);
-int search_test(int depth);
+int search_driver(int depth, int alpha, int beta);
+void search_test(int depth, int alpha, int beta);
 void print_move_list(moves *move_list);
 void sort_move_list(moves *move_list);
 void print_move(int move);
@@ -65,13 +65,15 @@ void print_chess_board();
 int main()
 {
     init_all();
-    parse_fen(start_position);
+    parse_fen(tricky_position);
     print_chess_board();
     moves move_list[1];
     generate_moves(move_list);
     print_move_list(move_list);
     //cout<<evaluate()<<endl;
-    cout<<search_test(5)<<endl;
+    search_test(5, NEGATIVEINFINITY, POSITIVEINFINITY);
+    cin.get();
+    return 0;
     //cout<<search(3)<<endl;
     //cout<<evaluate()<<endl;
     //sort_move_list(move_list);
@@ -164,8 +166,6 @@ int main()
     /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
     cout<<"is e4 attacked by black pawn? "<<((pawn_attacks[WHITE][e4]&piece_bitboards[p])?"yes":"no");*/
     //print_attacked_squares(WHITE);
-    cin.get();
-    return 0;
     //WHITE PAWNS
     /*set_bit(piece_bitboards[P], a2);
     set_bit(piece_bitboards[P], b2);
@@ -512,7 +512,7 @@ static int evaluate(){
     }
     return (side==WHITE)?evaluation:-evaluation;
 }
-int search_driver(int depth){
+int search_driver(int depth, int alpha, int beta){
     if(depth == 0)
     {
         nodes++;
@@ -525,7 +525,7 @@ int search_driver(int depth){
         cout<<"HAMLE BULUNAMADI"<<endl;
         return 0;
     }
-    int bestEvaluation = NEGATIVEINFINITY;
+    //int bestEvaluation = NEGATIVEINFINITY;
     for(int i = 0; i<move_list->count; i++)
     {
         int move = move_list->moves[i];
@@ -534,18 +534,24 @@ int search_driver(int depth){
         {
             continue;
         }
-        int evaluation = -search_driver(depth-1);
-        bestEvaluation = max(evaluation, bestEvaluation);
+        int evaluation = -search_driver(depth-1, -beta, -alpha);
+        //bestEvaluation = max(evaluation, bestEvaluation);
         take_back();
+        if(evaluation >= beta)
+        {
+            return beta;
+        }
+        alpha = max(alpha, evaluation);
     }
-
-    return bestEvaluation;
+    return alpha;
+    //return bestEvaluation;
 }
-int search_test(int depth){
+void search_test(int depth, int alpha, int beta){
     cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
     int best;
     moves move_list[1];
     generate_moves(move_list);
+    auto startTime = chrono::high_resolution_clock::now();
     for (int i = 0; i < move_list->count; i++)
     {
         //sort_move_list(move_list);
@@ -555,12 +561,15 @@ int search_test(int depth){
         {
             continue;
         }
-        best = -search_driver(depth-1);
+        best = -search_driver(depth-1, -beta, -alpha);
         take_back();
         cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
                     " | depth: "<<depth<<" evaluated: "<<best<<endl;
     }
-    return best;
+    auto endTime = chrono::high_resolution_clock::now();
+    chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+    cout << " Loop took " << duration.count() << " milliseconds" << endl;
+    //return best;
 }
 
 
