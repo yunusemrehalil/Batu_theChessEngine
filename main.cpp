@@ -65,13 +65,13 @@ void print_chess_board();
 int main()
 {
     init_all();
-    parse_fen(tricky_position);
+    parse_fen(start_position);
     print_chess_board();
     moves move_list[1];
     generate_moves(move_list);
     print_move_list(move_list);
     //cout<<evaluate()<<endl;
-    search_test(5, NEGATIVEINFINITY, POSITIVEINFINITY);
+    search_test(6, NEGATIVEINFINITY, POSITIVEINFINITY);
     cin.get();
     return 0;
     //cout<<search(3)<<endl;
