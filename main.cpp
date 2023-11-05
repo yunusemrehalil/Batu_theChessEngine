@@ -1,7 +1,7 @@
 #include <iostream>
 #include <chrono>
+#include <algorithm>
 #include <bits/stdc++.h>
-
 
 #include "headers/constants.hpp"
 #include "headers/magic_numbers.hpp"
@@ -20,198 +20,51 @@ using namespace initializeFuncs;
 using namespace magicNumberFuncs;
 using namespace testFuncs;
 
-/*
-        binary move bits representation                                 hexadecimal constants
-        
-    0000 0000 0000 0000 0000 0011 1111   source square                   0x3f
-    0000 0000 0000 0000 1111 1100 0000   targetsquare                    0xfc0
-    0000 0000 0000 1111 0000 0000 0000   piece                           0xf000
-    0000 0000 1111 0000 0000 0000 0000   promoted piece                  0xf0000
-    0000 0001 0000 0000 0000 0000 0000   capture flag                    0x100000
-    0000 0010 0000 0000 0000 0000 0000   double pawn push flag           0x200000
-    0000 0100 0000 0000 0000 0000 0000   enpassant flag                  0x400000
-    0000 1000 0000 0000 0000 0000 0000   castling flag                   0x800000
-    0001 0000 0000 0000 0000 0000 0000   checking flag                   0x1000000
-*/
-
-/*
-                                        castling    move        binary  decimal
-                                        right       update      
-        king & rook did not move:       1111    &   1111    =   1111    15
-                white king moved:       1111    &   1100    =   1100    12
-     white king's rook not moved:       1111    &   1110    =   1110    14
-   white queens's rook not moved:       1111    &   1101    =   1101    13
-   //////////////////////////////
-                black king moved:       1111    &   0011    =   0011    3
-     black king's rook not moved:       1111    &   1011    =   1011    11
-   black queens's rook not moved:       1111    &   0111    =   0111    7
-*/
-
-
 void parse_fen(const char *fen);
 void print_move_list(moves *move_list);
 void print_move(int move);
 void print_bitboard(U64 bitboard);
 void print_chess_board();
+void order_moves(moves *move_list);
+void print_evaluated_move_list(vector<moves> move_list);
 
 int main()
 {
+    cin.get();
     init_all();
-    parse_fen(start_position);
+    parse_fen(tricky_position);
     print_chess_board();
     moves move_list[1];
     generate_moves(move_list);
-    print_move_list(move_list);
-    //cout<<evaluate()<<endl;
-    search_test(7, NEGATIVEINFINITY, POSITIVEINFINITY);
+    vector<moves> evaluated_move_list(move_list->count);
+    moves new_list = search_test(5, NEGATIVEINFINITY, POSITIVEINFINITY);
+    for(int i = 0; i<move_list->count; i++)
+    {
+        evaluated_move_list[i].move_score[0] = new_list.move_score[i];
+        evaluated_move_list[i].moves[0] = new_list.moves[i];
+        if(side == WHITE)
+        {
+            if(evaluated_move_list[i].move_score[0] > best_move_WHITE_score)
+            {
+                best_move_WHITE = evaluated_move_list[i].moves[0];
+                best_move_WHITE_score = evaluated_move_list[i].move_score[0];
+            }
+        }
+        else
+        {
+            if(evaluated_move_list[i].move_score[0] < best_move_BLACK_score)
+            {
+                best_move_BLACK = evaluated_move_list[i].moves[0];
+                best_move_BLACK_score = evaluated_move_list[i].move_score[0];
+            }
+        }  
+    }
+    (side == WHITE)? best_move = best_move_WHITE: best_move = best_move_BLACK;
+    cout<<endl<<" Best move for "<<((side==WHITE)?"white: ":"black: ")<<square_to_coordinate[get_move_source(best_move)]
+            <<square_to_coordinate[get_move_target(best_move)]<<promoted_piece[get_move_promoted(best_move)]<<endl;
     cin.get();
     return 0;
-    //cout<<search(3)<<endl;
-    //cout<<evaluate()<<endl;
-    //sort_move_list(move_list);
-    //perft_test(6);
-    /*moves move_list[1];
-    generate_moves(move_list);
-    print_move_list(move_list);
-    int move = move_list->moves[5];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();
-    generate_moves(move_list);
-    print_move_list(move_list);
-    move = move_list->moves[4];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();
-    move = move_list->moves[3];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();*/
-    /*moves move_list[1];
-    generate_moves(move_list);
-    //print_move_list(move_list);
-    int move = move_list->moves[2];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();
-    generate_moves(move_list);
-    //print_move_list(move_list);
-    move = move_list->moves[4];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();
-    move = move_list->moves[3];
-    print_move(move);
-    make_move(move, all_moves);
-    print_chess_board();*/
-    /*moves move_list[1];
-    generate_moves(move_list);
-    make_move(move_list->moves[1], all_moves);
-    print_move_list(move_list);*/
-    //print_move_list(move_list);
-    //auto startTime = chrono::high_resolution_clock::now();
-    //perft_test(6);
-    /*auto endTime = chrono::high_resolution_clock::now();
-    chrono::microseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
-    /*cout << " Loop took " << duration.count() << " microseconds" << endl;
-    cout << " Nodes : " << nodes << endl;*/
-    /*//preserve board state
-    copy_board();
-    //parse fen
-    parse_fen(empty_board);
-    print_chess_board();
-    //restore board state
-    take_back();
-    print_chess_board();*/
-    /*moves move_list[1];
-    move_list->count = 0;
-    add_move(move_list, encode_move(d7, e8, P, B, 1, 0, 0, 0));
-    //int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
-    generate_moves(move_list);
-    print_move_list(move_list);*/
-    /*int move = encode_move(e7, d8, P, Q, 1, 0, 0, 0);
-    int source_square = get_move_source(move);
-    cout<<" source square : "<<square_to_coordinate[source_square]<<endl;
-    int target_square = get_move_target(move);
-    cout<<" target square : "<<square_to_coordinate[target_square]<<endl;
-    int piece = get_move_piece(move);
-    cout<<" piece : "<<ascii_pieces[piece]<<endl;
-    int promoted = get_move_promoted(move);
-    cout<<" promoted : "<<ascii_pieces[promoted]<<endl;
-    int captured = get_move_capture(move);
-    cout<<" captured : "<<((captured)?"captured":"non-captured")<<endl;
-    int doublepawn = get_move_doublepawn(move);
-    cout<<" double pawn : "<<((doublepawn)?"double pawn":"non-double pawn")<<endl;
-    int enpassant = get_move_enpassant(move);
-    cout<<" double pawn : "<<((enpassant)?"enpassant":"non-enpassant")<<endl;
-    int castling = get_move_castling(move);
-    cout<<" double pawn : "<<((castling)?"castling":"non-castling")<<endl;*/
-    /*auto startTime = chrono::high_resolution_clock::now();
-    for(int i=0; i<10000000; i++)
-    {
-        generate_moves();
-    }
-    auto endTime = chrono::high_resolution_clock::now();
-    chrono::microseconds duration = chrono::duration_cast<chrono::microseconds>(endTime - startTime);
-    cout << " Loop took " << duration.count() << " microseconds" << endl;*/
-    //print_bitboard(occupancy_bitboards[BOTH]);
-    /*print_bitboard(pawn_attacks[WHITE][e4]&piece_bitboards[p] );
-    cout<<"is e4 attacked by black pawn? "<<((pawn_attacks[WHITE][e4]&piece_bitboards[p])?"yes":"no");*/
-    //print_attacked_squares(WHITE);
-    //WHITE PAWNS
-    /*set_bit(piece_bitboards[P], a2);
-    set_bit(piece_bitboards[P], b2);
-    set_bit(piece_bitboards[P], c2);
-    set_bit(piece_bitboards[P], d2);
-    set_bit(piece_bitboards[P], e2);
-    set_bit(piece_bitboards[P], f2);
-    set_bit(piece_bitboards[P], g2);
-    set_bit(piece_bitboards[P], h2);
-    //WHITE PIECES
-    set_bit(piece_bitboards[R], a1);
-    set_bit(piece_bitboards[R], h1);
-    set_bit(piece_bitboards[N], b1);
-    set_bit(piece_bitboards[N], g1);
-    set_bit(piece_bitboards[B], c1);
-    set_bit(piece_bitboards[B], f1);
-    set_bit(piece_bitboards[Q], d1);
-    set_bit(piece_bitboards[K], e1);
-    //BLACK PAWNS
-    set_bit(piece_bitboards[p], a7);
-    set_bit(piece_bitboards[p], b7);
-    set_bit(piece_bitboards[p], c7);
-    set_bit(piece_bitboards[p], d7);
-    set_bit(piece_bitboards[p], e7);
-    set_bit(piece_bitboards[p], f7);
-    set_bit(piece_bitboards[p], g7);
-    set_bit(piece_bitboards[p], h7);
-    //BLACK PIECES
-    set_bit(piece_bitboards[r], a8);
-    set_bit(piece_bitboards[r], h8);
-    set_bit(piece_bitboards[n], b8);
-    set_bit(piece_bitboards[n], g8);
-    set_bit(piece_bitboards[b], c8);
-    set_bit(piece_bitboards[b], f8);
-    set_bit(piece_bitboards[q], d8);
-    set_bit(piece_bitboards[k], e8);*/
-    //print_bitboard(piece_bitboards[R]);
-    /*side = WHITE;
-    castle = wk | wq | bk | bq;*/
-    //print_chess_board();
-    /*cout<<ascii_pieces[P]<<endl;
-    cout<<ascii_pieces[char_pieces['K']];*/
-    //print_bitboard(occupancy);
-    /*U64 occupancy = 0ULL;
-    set_bit(occupancy, e5);
-    set_bit(occupancy, f5);
-    set_bit(occupancy, c4);*/
-    /*set_bit(occupancy, c2);
-    set_bit(occupancy, e3);
-    set_bit(occupancy, g4);
-    set_bit(occupancy, c6);
-    set_bit(occupancy, g2);*/
-    //print_bitboard(get_queen_attacks(e4, occupancy));
-    //print_bitboard(piece_bitboards[r]);   
+ 
 }
  
 void print_bitboard(U64 bitboard){
@@ -370,7 +223,7 @@ void print_move_list(moves *move_list)
         cout<<endl<<" No move in the list!"<<endl;
         return;
     }
-    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking"<<endl;
+    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking    score"<<endl;
     for(int move_count=0; move_count<move_list->count; move_count++)
     {
         int move = move_list->moves[move_count];
@@ -380,11 +233,42 @@ void print_move_list(moves *move_list)
                         <<"          "<<(get_move_doublepawn(move)?1:0)
                         <<"             "<<(get_move_enpassant(move)?1:0)
                         <<"            "<<(get_move_castling(move)?1:0)
-                        <<"            "<<(get_move_checking(move)?1:0)<<endl;
+                        <<"           "<<(get_move_checking(move)?1:0)
+                        <<"           "<<move_list->move_score[move_count]<<endl;
     }
     cout<<" Total number of moves : "<<move_list->count<<endl;
 }
-
+void order_moves(moves *move_list){
+    for(int i=0; i<move_list->count; i++)
+    {
+        int move = move_list->moves[i];
+        int move_score_guess = 0;
+        int source_piece = get_move_piece(move);
+        int target_piece = get_captured_piece(move);
+        if(get_move_capture(move))
+        {
+            move_score_guess = 10 * piece_value[target_piece] - piece_value[source_piece];
+            cout<<ascii_pieces[source_piece]<<ascii_pieces[target_piece]<<": "<<move_score_guess<<endl;
+        }
+    }
+}
+void print_evaluated_move_list(vector<moves> move_list){
+    cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking    score"<<endl;
+    for(int move_count=0; move_count<move_list.size(); move_count++)
+    {
+        //move_list[move_count].moves[move_count];
+        int move = move_list[move_count].moves[move_count];
+        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<(get_move_promoted(move)?promoted_piece[get_move_promoted(move)]:' ')<<"   "<<
+                        ascii_pieces[get_move_piece(move)]
+                        <<"        "<<(get_move_capture(move)?1:0)
+                        <<"          "<<(get_move_doublepawn(move)?1:0)
+                        <<"             "<<(get_move_enpassant(move)?1:0)
+                        <<"            "<<(get_move_castling(move)?1:0)
+                        <<"           "<<(get_move_checking(move)?1:0)
+                        <<"           "<<move_list[move_count].move_score[move_count]<<endl;
+    }
+    cout<<" Total number of moves : "<<move_list.size()<<endl;
+}
 
 
 

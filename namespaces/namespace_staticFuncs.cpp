@@ -1,6 +1,7 @@
 #pragma once
 #ifndef STATICFUNCS_CPP
 #define STATICFUNCS_CPP
+
 #include "../headers/constants.hpp"
 #include "../headers/arrays.hpp"
 #include <vector>
@@ -8,13 +9,10 @@
 #include <cstring>
 #include <algorithm>
 
-
 int side;
 int enpassant = no_sq;
 int castle;
 using namespace std;
-
-vector<string> legal_moves;
 
 namespace sif{
     //static inline functions
@@ -929,10 +927,10 @@ namespace sif{
         return 0;
     }
     static inline void sort_move_list(moves *move_list){
-    //int n = sizeof(move_list) / sizeof(move_list->moves[0]);
-    int n = move_list->count;
-    //cout<<n<<endl;
-    sort(move_list->moves, (move_list->moves)+n, greater<int>());
+        int n = move_list->count;
+        //cout<<n<<endl;
+        sort(move_list->move_score, (move_list->move_score)+n, greater<int>());
+    
     //cout << "Array after sorting : \n";
     //for (int i = 0; i < n; ++i)
         //cout <<i+1<<". hamle: "<<square_to_coordinate[get_move_source(move_list->moves[i])]<<square_to_coordinate[get_move_target(move_list->moves[i])]<<promoted_piece[get_move_promoted(move_list->moves[i])]<< " "<<endl;
@@ -979,5 +977,29 @@ namespace sif{
         }
     }*/
 }
+    static inline int get_captured_piece(int move){
+        int target_piece = P;
+        int target_square = get_move_target(move);
+        int start_piece, end_piece;
+        if(side == WHITE)
+        {
+            start_piece = p;
+            end_piece = k;
+        }
+        else
+        {
+            start_piece = P;
+            end_piece = K;
+        }
+        for(int bb_piece = start_piece; bb_piece<=end_piece; bb_piece++)
+        {
+            if(get_bit(piece_bitboards[bb_piece], target_square))
+            {
+                target_piece = bb_piece;
+                break;
+            }
+        }
+        return target_piece;
+    }
 }
 #endif

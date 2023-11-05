@@ -6,6 +6,7 @@
 #include "../headers/arrays.hpp"
 #include "namespace_staticFuncs.cpp"
 
+int best_move;
 
 using namespace std;
 
@@ -21,7 +22,7 @@ namespace testFuncs{
             {
                 piece = current_piece;
                 square = get_1st_bit_index(material);
-                evaluation += pieceValue[piece];
+                evaluation += piece_value[piece];
                 delete_bit(material, square);
             }
         }
@@ -81,6 +82,7 @@ namespace testFuncs{
         cout << " Loop took " << duration.count() << " milliseconds" << endl;
     }
     static inline int search_driver(int depth, int alpha, int beta){
+        int evaluation;
         if(depth == 0)
         {
             nodes++;
@@ -90,9 +92,10 @@ namespace testFuncs{
         generate_moves(move_list);
         if(move_list->count == 0)
         {
-            cout<<"HAMLE BULUNAMADI"<<endl;
+            cout<<"No move here..."<<endl;
             return 0;
         }
+        //sort_move_list(move_list);
         //int bestEvaluation = NEGATIVEINFINITY;
         for(int i = 0; i<move_list->count; i++)
         {
@@ -102,7 +105,7 @@ namespace testFuncs{
             {
                 continue;
             }
-            int evaluation = -search_driver(depth-1, -beta, -alpha);
+            evaluation = -search_driver(depth-1, -beta, -alpha);
             //bestEvaluation = max(evaluation, bestEvaluation);
             take_back();
             if(evaluation >= beta)
@@ -114,7 +117,7 @@ namespace testFuncs{
         return alpha;
         //return bestEvaluation;
     }
-    static inline void search_test(int depth, int alpha, int beta){
+    static inline moves search_test(int depth, int alpha, int beta){
         cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
         int best;
         moves move_list[1];
@@ -131,13 +134,14 @@ namespace testFuncs{
             }
             best = -search_driver(depth-1, -beta, -alpha);
             take_back();
+            move_list->move_score[i] = ((side==WHITE)?best:-best);
             cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
-                        " | depth: "<<depth<<" evaluated: "<<best<<endl;
+                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<endl;
         }
         auto endTime = chrono::high_resolution_clock::now();
         chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
         cout << " Loop took " << duration.count() << " milliseconds" << endl;
-        //return best;
+        return *move_list;
     }
 }
 

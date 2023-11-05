@@ -37,6 +37,8 @@
         (enpassant << 22) |     \
         (castling << 23) |     \
         (checking << 24)     \
+        //(captured_piece <<25) \
+
 //extract source square
 #define get_move_source(move) (move & 0x3f)
 //extract target square
@@ -55,9 +57,42 @@
 #define get_move_castling(move) (move & 0x800000)
 //extract check
 #define get_move_checking(move) (move & 0x1000000)
+//extract captured piece
+//#define get_move_captured_piece(move) (move & 0x1000000)
+
+/*
+        binary move bits representation                                 hexadecimal constants
+        
+    0000 0000 0000 0000 0000 0011 1111   source square                   0x3f
+    0000 0000 0000 0000 1111 1100 0000   targetsquare                    0xfc0
+    0000 0000 0000 1111 0000 0000 0000   piece                           0xf000
+    0000 0000 1111 0000 0000 0000 0000   promoted piece                  0xf0000
+    0000 0001 0000 0000 0000 0000 0000   capture flag                    0x100000
+    0000 0010 0000 0000 0000 0000 0000   double pawn push flag           0x200000
+    0000 0100 0000 0000 0000 0000 0000   enpassant flag                  0x400000
+    0000 1000 0000 0000 0000 0000 0000   castling flag                   0x800000
+    0001 0000 0000 0000 0000 0000 0000   checking flag                   0x1000000
+    //////////0010 0000 0000 0000 0000 0000 0000   captured piece flag             0x2000000
+*/
+
+/*
+                                        castling    move        binary  decimal
+                                        right       update      
+        king & rook did not move:       1111    &   1111    =   1111    15
+                white king moved:       1111    &   1100    =   1100    12
+     white king's rook not moved:       1111    &   1110    =   1110    14
+   white queens's rook not moved:       1111    &   1101    =   1101    13
+   //////////////////////////////
+                black king moved:       1111    &   0011    =   0011    3
+     black king's rook not moved:       1111    &   1011    =   1011    11
+   black queens's rook not moved:       1111    &   0111    =   0111    7
+*/
+
 const char* empty_board = "8/8/8/8/8/8/8/8 b - - ";
 const char* start_position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const char* tricky_position = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+const char* start_e4_position = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+const char* g8f6_position = "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2";
 const char* killer_position = "rnbqkb1r/pp1p1ppp/8/2p1pP2/1P1P4/3P3P/P1P1P3/RNBQKBNR w KQkq e6 0 1";
 const char* cmk_position = "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/3pP3/3P1NPP/PPP1NPB1/R1BQ1RK1 b - - 0 9";
 const char* random_position = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
@@ -89,6 +124,7 @@ const char* end_game_4 = "1N6/6k1/8/8/7B/8/8/4K3 w - - 0 1";
 const char* end_game_5 = "8/2p5/3p4/KP5r/1R3pPk/8/4P3/8 b - g3 0 1";
 const char* end_game_6 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
 const char* end_game_7 = "8/2p5/3p4/KP6/R1r2pPk/4P3/8/8 b - g3 0 3";
+const char* end_game_8 = "3r4/3r4/3k4/8/3K4/8/8/8 w - - 0 1";
 const char* white_knight_can_check_position = "r1q3k1/1Pp2N2/2N1b1pr/4Pp1p/2Pp2nP/3P1PP1/p5B1/1NBQ1RK1 w - f6 0 25";
 const char* white_bishop_and_queen_can_check_position = "rnbqkbnr/ppp1p1pp/5p2/3p4/4P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 0 3";
 const char* both_side_check_position = "3k2r1/5P2/2b1Pb1r/2N5/R7/1Qpn4/1q2B1p1/3KBN2 w - - 0 1";
@@ -155,23 +191,28 @@ const int castling_rights[64] = {
 };
 char ascii_pieces[12] = {'P','R','N','B','Q','K','p','r','n','b','q','k'};
 unsigned int state = 1804289383;
-int pieceValue[12] = {
-    100,
-    500,
-    300,
-    320,
-    1000,
-    10000,
-    -100,
-    -500,
-    -300,
-    -320,
-    -1000,
-    -10000
+int piece_value[12] = {
+    100,   //pawn
+    500,   //rook
+    300,   //knigt
+    320,   //bishop
+    1000,  //queen
+    10000, //king
+    -100,  //pawn
+    -500,  //rook
+    -300,  //knight
+    -320,  //bishop
+    -1000, //queen
+    -10000 //king
 };
+
 long nodes;
 long cummulative_nodes;
 long old_nodes; 
+int best_move_WHITE = NEGATIVEINFINITY;
+int best_move_BLACK = POSITIVEINFINITY;
+int best_move_WHITE_score = NEGATIVEINFINITY;
+int best_move_BLACK_score = POSITIVEINFINITY;
 
 std::string checks[64];
 std::string center_captures[64];
@@ -184,5 +225,6 @@ typedef struct
 {
     int moves[256];
     int count;
+    int move_score[256];
 }moves;
 #endif
