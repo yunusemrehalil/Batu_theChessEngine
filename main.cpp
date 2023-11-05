@@ -11,12 +11,14 @@
 #include "namespaces/namespace_maskPieceFuncs.cpp"
 #include "namespaces/namespace_initializeFuncs.cpp"
 #include "namespaces/namespace_magicNumberFuncs.cpp"
+#include "namespaces/namespace_testFuncs.cpp"
 
 using namespace std;
 using namespace sif;
 using namespace maskPieceFuncs;
 using namespace initializeFuncs;
 using namespace magicNumberFuncs;
+using namespace testFuncs;
 
 /*
         binary move bits representation                                 hexadecimal constants
@@ -46,21 +48,11 @@ using namespace magicNumberFuncs;
 */
 
 
-long nodes;
-long cummulative_nodes;
-long old_nodes; 
-static inline void perft_driver(int depth);
 void parse_fen(const char *fen);
-void perft_test(int depth);
-static int evaluate();
-int search_driver(int depth, int alpha, int beta);
-void search_test(int depth, int alpha, int beta);
 void print_move_list(moves *move_list);
-void sort_move_list(moves *move_list);
 void print_move(int move);
 void print_bitboard(U64 bitboard);
 void print_chess_board();
-
 
 int main()
 {
@@ -71,7 +63,7 @@ int main()
     generate_moves(move_list);
     print_move_list(move_list);
     //cout<<evaluate()<<endl;
-    search_test(6, NEGATIVEINFINITY, POSITIVEINFINITY);
+    search_test(7, NEGATIVEINFINITY, POSITIVEINFINITY);
     cin.get();
     return 0;
     //cout<<search(3)<<endl;
@@ -392,185 +384,9 @@ void print_move_list(moves *move_list)
     }
     cout<<" Total number of moves : "<<move_list->count<<endl;
 }
-void sort_move_list(moves *move_list){
-    //int n = sizeof(move_list) / sizeof(move_list->moves[0]);
-    int n = move_list->count;
-    //cout<<n<<endl;
-    sort(move_list->moves, (move_list->moves)+n, greater<int>());
-    //cout << "Array after sorting : \n";
-    //for (int i = 0; i < n; ++i)
-        //cout <<i+1<<". hamle: "<<square_to_coordinate[get_move_source(move_list->moves[i])]<<square_to_coordinate[get_move_target(move_list->moves[i])]<<promoted_piece[get_move_promoted(move_list->moves[i])]<< " "<<endl;
-    /*int center_move[64], checking[64], capture[64], promotion[64], j=0,k=0,l=0,m=0;
-    for(int i=0; i<move_list->count; i++)
-    {
-        int move = move_list->moves[i];
-        if (get_move_target(move) == e4 ||
-            get_move_target(move) == e5 ||
-            get_move_target(move) == d4 ||
-            get_move_target(move) == d5)
-            {
-                center_move[j] = move;
-                //center_move[j] = string(square_to_coordinate[get_move_source(move)]);
-                //cout<<" Merkeze Yapilan Hamle:";
-                //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
-                //cout<<center_move[j]<<endl;
-                j++;
-            }
-        if(get_move_checking(move))
-        {
-            checking[k] = move;
-            //cout<<" Sah Hamlesi:";
-            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
-            k++;
-        }
-        if(get_move_capture(move))
-        {
-            capture[l] = move;
-            //cout<<" Alis Hamlesi:";
-            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
-            l++;
-        }
-        if(get_move_promoted(move))
-        {
-            promotion[m] = move;
-            //cout<<" Promotion Hamlesi";
-            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
-            m++;
-        }
-        for(int b=0; b<64; b++)
-        {
-            cout<<center_move[b]<<endl;
-        }
-    }*/
-}
-static inline void perft_driver(int depth)
-{
-    if(depth == 0)
-    {
-        nodes++;
-        return;
-    }
-    moves move_list[1];
-    generate_moves(move_list);
-    sort_move_list(move_list);
-    for (int i = 0; i < move_list->count; i++)
-    {
-        //init move
-        int move = move_list->moves[i];
-        //preserve board state
-        copy_board();
-        //make move
-        if(!make_move(move, all_moves))
-        {
-            continue;
-        }
-        perft_driver(depth-1);
-        take_back();
-    }
-}
-void perft_test(int depth)
-{   
-    cout<<endl<<" PERFORMANCE TEST"<<endl<<endl;
-    moves move_list[1];
-    generate_moves(move_list);
-    auto startTime = chrono::high_resolution_clock::now();
-    for (int i = 0; i < move_list->count; i++)
-    {
-        sort_move_list(move_list);
-        int move = move_list->moves[i];
-        copy_board();
-        if(!make_move(move, all_moves))
-        {
-            continue;
-        }
-        cummulative_nodes = nodes;
-        perft_driver(depth-1);
-        old_nodes = nodes - cummulative_nodes;
-        take_back();
-        cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
-                    " | nodes: "<<old_nodes<<endl;
-    }
-    auto endTime = chrono::high_resolution_clock::now();
-    chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
-    cout<<endl<<endl<<" Depth: "<<depth<<endl;
-    cout<<" Nodes: "<<nodes<<endl;
-    cout << " Loop took " << duration.count() << " milliseconds" << endl;
-}
-static int evaluate(){
-    U64 material = 0;
-    int evaluation = 0, piece, square;
-    for(int current_piece = P; current_piece <= k; current_piece++)
-    {
-        material = piece_bitboards[current_piece];
-        while(material)
-        {
-            piece = current_piece;
-            square = get_1st_bit_index(material);
-            evaluation += pieceValue[piece];
-            delete_bit(material, square);
-        }
-    }
-    return (side==WHITE)?evaluation:-evaluation;
-}
-int search_driver(int depth, int alpha, int beta){
-    if(depth == 0)
-    {
-        nodes++;
-        return evaluate();
-    }
-    moves move_list[1];
-    generate_moves(move_list);
-    if(move_list->count == 0)
-    {
-        cout<<"HAMLE BULUNAMADI"<<endl;
-        return 0;
-    }
-    //int bestEvaluation = NEGATIVEINFINITY;
-    for(int i = 0; i<move_list->count; i++)
-    {
-        int move = move_list->moves[i];
-        copy_board();
-        if(!make_move(move, all_moves))
-        {
-            continue;
-        }
-        int evaluation = -search_driver(depth-1, -beta, -alpha);
-        //bestEvaluation = max(evaluation, bestEvaluation);
-        take_back();
-        if(evaluation >= beta)
-        {
-            return beta;
-        }
-        alpha = max(alpha, evaluation);
-    }
-    return alpha;
-    //return bestEvaluation;
-}
-void search_test(int depth, int alpha, int beta){
-    cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
-    int best;
-    moves move_list[1];
-    generate_moves(move_list);
-    auto startTime = chrono::high_resolution_clock::now();
-    for (int i = 0; i < move_list->count; i++)
-    {
-        //sort_move_list(move_list);
-        int move = move_list->moves[i];
-        copy_board();
-        if(!make_move(move, all_moves))
-        {
-            continue;
-        }
-        best = -search_driver(depth-1, -beta, -alpha);
-        take_back();
-        cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
-                    " | depth: "<<depth<<" evaluated: "<<best<<endl;
-    }
-    auto endTime = chrono::high_resolution_clock::now();
-    chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
-    cout << " Loop took " << duration.count() << " milliseconds" << endl;
-    //return best;
-}
+
+
+
 
 
 

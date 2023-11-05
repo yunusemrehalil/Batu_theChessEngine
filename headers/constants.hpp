@@ -169,7 +169,9 @@ int pieceValue[12] = {
     -1000,
     -10000
 };
-
+long nodes;
+long cummulative_nodes;
+long old_nodes; 
 
 std::string checks[64];
 std::string center_captures[64];

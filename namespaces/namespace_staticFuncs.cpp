@@ -928,5 +928,56 @@ namespace sif{
         }
         return 0;
     }
+    static inline void sort_move_list(moves *move_list){
+    //int n = sizeof(move_list) / sizeof(move_list->moves[0]);
+    int n = move_list->count;
+    //cout<<n<<endl;
+    sort(move_list->moves, (move_list->moves)+n, greater<int>());
+    //cout << "Array after sorting : \n";
+    //for (int i = 0; i < n; ++i)
+        //cout <<i+1<<". hamle: "<<square_to_coordinate[get_move_source(move_list->moves[i])]<<square_to_coordinate[get_move_target(move_list->moves[i])]<<promoted_piece[get_move_promoted(move_list->moves[i])]<< " "<<endl;
+    /*int center_move[64], checking[64], capture[64], promotion[64], j=0,k=0,l=0,m=0;
+    for(int i=0; i<move_list->count; i++)
+    {
+        int move = move_list->moves[i];
+        if (get_move_target(move) == e4 ||
+            get_move_target(move) == e5 ||
+            get_move_target(move) == d4 ||
+            get_move_target(move) == d5)
+            {
+                center_move[j] = move;
+                //center_move[j] = string(square_to_coordinate[get_move_source(move)]);
+                //cout<<" Merkeze Yapilan Hamle:";
+                //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+                //cout<<center_move[j]<<endl;
+                j++;
+            }
+        if(get_move_checking(move))
+        {
+            checking[k] = move;
+            //cout<<" Sah Hamlesi:";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            k++;
+        }
+        if(get_move_capture(move))
+        {
+            capture[l] = move;
+            //cout<<" Alis Hamlesi:";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            l++;
+        }
+        if(get_move_promoted(move))
+        {
+            promotion[m] = move;
+            //cout<<" Promotion Hamlesi";
+            //cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+            m++;
+        }
+        for(int b=0; b<64; b++)
+        {
+            cout<<center_move[b]<<endl;
+        }
+    }*/
+}
 }
 #endif
