@@ -53,6 +53,22 @@
         "iomanip": "cpp",
         "span": "cpp",
         "sstream": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "bitset": "cpp",
+        "any": "cpp",
+        "forward_list": "cpp",
+        "unordered_set": "cpp",
+        "expected": "cpp",
+        "fstream": "cpp",
+        "future": "cpp",
+        "shared_mutex": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "stop_token": "cpp",
+        "syncstream": "cpp",
+        "thread": "cpp",
+        "regex": "cpp",
+        "valarray": "cpp",
+        "ranges": "cpp"
     }
 }

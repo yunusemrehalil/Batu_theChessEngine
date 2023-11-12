@@ -5,8 +5,8 @@
 #include "../headers/constants.hpp"
 #include "../headers/arrays.hpp"
 #include "namespace_staticFuncs.cpp"
+#include "namespace_printFuncs.cpp"
 
-int best_move;
 
 using namespace std;
 
@@ -28,6 +28,28 @@ namespace testFuncs{
         }
         return (side==WHITE)?evaluation:-evaluation;
 }
+    static inline int tension()
+    {
+        moves move_list[1];
+        generate_moves(move_list);
+        int capture_count=0, checking_count=0, promotion_count=0;
+        for(int i = 0; i<move_list->count; i++)
+        {
+            if(get_move_capture(move_list->moves[i]))
+            {
+                capture_count++;
+            }
+            if(get_move_checking(move_list->moves[i]))
+            {
+                checking_count++;
+            }
+            if(get_move_promoted(move_list->moves[i]))
+            {
+                promotion_count++;
+            }
+        }
+        return capture_count + checking_count + promotion_count;
+    }
     static inline void perft_driver(int depth)
     {
         if(depth == 0)
@@ -118,9 +140,10 @@ namespace testFuncs{
         //return bestEvaluation;
     }
     static inline moves search_test(int depth, int alpha, int beta){
-        cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
+        //cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
         int best;
         moves move_list[1];
+        moves return_list[1];
         generate_moves(move_list);
         auto startTime = chrono::high_resolution_clock::now();
         for (int i = 0; i < move_list->count; i++)
@@ -130,17 +153,19 @@ namespace testFuncs{
             copy_board();
             if(!make_move(move, all_moves))
             {
+                move_list->move_legality[i] = false;
                 continue;
             }
+            move_list->move_legality[i] = true;
             best = -search_driver(depth-1, -beta, -alpha);
             take_back();
             move_list->move_score[i] = ((side==WHITE)?best:-best);
-            cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
-                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<endl;
+            /*cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
+                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<endl;*/
         }
         auto endTime = chrono::high_resolution_clock::now();
         chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
-        cout << " Loop took " << duration.count() << " milliseconds" << endl;
+        //cout << " Loop took " << duration.count() << " milliseconds" << endl;
         return *move_list;
     }
 }

@@ -21,6 +21,12 @@ namespace sif{
         move_list->moves[move_list->count] = move;
         move_list->count++;
     }
+    static inline void add_move_to_evaluated(EvaluatedMove *move_list, int move, int score)
+    {
+        move_list->moves[move_list->count] = move;
+        move_list->move_score[move_list->count] = score;
+        move_list->count++;
+    }
     static inline void print_vector(vector<string> &v){
         for(int i = 0; i< v.size(); i++) {
             cout<<" "<<v[i]<<endl;
