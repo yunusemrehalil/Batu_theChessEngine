@@ -26,7 +26,7 @@ void order_moves(moves* move_list);
 int find_best_move(moves* move_list);
 int parse_move(char* move_string);
 void print_top_infos();
-EvaluatedMove findBestMove(const EvaluatedMove& evaluatedMoves);
+EvaluatedMove findBestMove(const EvaluatedMove &evaluatedMoves);
 
 int main()
 {
@@ -220,28 +220,29 @@ EvaluatedMove findBestMove(const EvaluatedMove &evaluatedMoves) {
     EvaluatedMove bestMove;
     bestMove.count = 0;
     bestMove.move_score[0] = (side==WHITE) ? INT_MIN : INT_MAX;
-    // Iterate through the moves to find the best score
     for (int i = 0; i < evaluatedMoves.count; ++i) {
-        if (side==WHITE) {
-            // Find the move with the maximum score for white
-            if (evaluatedMoves.move_score[i] > bestMove.move_score[0]) {
+        if (side==WHITE) 
+        {
+            if (evaluatedMoves.move_score[i] > bestMove.move_score[0]) 
+            {
                 bestMove.count = 1;
                 bestMove.moves[0] = evaluatedMoves.moves[i];
                 bestMove.move_score[0] = evaluatedMoves.move_score[i];
-            } else if (evaluatedMoves.move_score[i] == bestMove.move_score[0]) {
-                // If multiple moves have the same score, add them to the result
+            } 
+            else if (evaluatedMoves.move_score[i] == bestMove.move_score[0]) 
+            {
                 bestMove.moves[bestMove.count] = evaluatedMoves.moves[i];
                 bestMove.move_score[bestMove.count] = evaluatedMoves.move_score[i];
                 bestMove.count++;
             }
-        } else {
-            // Find the move with the minimum score for black
+        } 
+        else 
+        {
             if (evaluatedMoves.move_score[i] < bestMove.move_score[0]) {
                 bestMove.count = 1;
                 bestMove.moves[0] = evaluatedMoves.moves[i];
                 bestMove.move_score[0] = evaluatedMoves.move_score[i];
             } else if (evaluatedMoves.move_score[i] == bestMove.move_score[0]) {
-                // If multiple moves have the same score, add them to the result
                 bestMove.moves[bestMove.count] = evaluatedMoves.moves[i];
                 bestMove.move_score[bestMove.count] = evaluatedMoves.move_score[i];
                 bestMove.count++;
