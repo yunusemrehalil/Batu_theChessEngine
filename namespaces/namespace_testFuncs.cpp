@@ -9,6 +9,7 @@
 
 
 using namespace std;
+using namespace printFuncs;
 
 namespace testFuncs{
     static inline int evaluate()
@@ -50,6 +51,7 @@ namespace testFuncs{
         }
         return capture_count + checking_count + promotion_count;
     }
+    /*############            PERFT TEST FUNCTIONS            ############*/
     static inline void perft_driver(int depth)
     {
         if(depth == 0)
@@ -103,6 +105,7 @@ namespace testFuncs{
         cout<<" Nodes: "<<nodes<<endl;
         cout << " Loop took " << duration.count() << " milliseconds" << endl;
     }
+    /*############            SEARCH TEST FUNCTIONS            ############*/
     static inline int search_driver(int depth, int alpha, int beta){
         int evaluation;
         if(depth == 0)
@@ -110,6 +113,18 @@ namespace testFuncs{
             nodes++;
             return evaluate();
         }
+        /*if(depth>=3)
+        {
+            copy_board();
+            side ^= 1;
+            enpassant = no_sq;
+            int score = -search_driver(depth-1-2, -beta, -beta+1);
+            take_back();
+            if(score >= beta)
+            {
+                return beta;
+            }
+        }*/
         moves move_list[1];
         generate_moves(move_list);
         if(move_list->count == 0)
@@ -127,6 +142,7 @@ namespace testFuncs{
             {
                 continue;
             }
+            nodes++;
             evaluation = -search_driver(depth-1, -beta, -alpha);
             //bestEvaluation = max(evaluation, bestEvaluation);
             take_back();
@@ -143,9 +159,8 @@ namespace testFuncs{
         //cout<<endl<<" SEARCH TEST  | Current Evaluation : "<<evaluate()<<endl<<endl;
         int best;
         moves move_list[1];
-        moves return_list[1];
         generate_moves(move_list);
-        auto startTime = chrono::high_resolution_clock::now();
+        //auto startTime = chrono::high_resolution_clock::now();
         for (int i = 0; i < move_list->count; i++)
         {
             //sort_move_list(move_list);
@@ -157,14 +172,142 @@ namespace testFuncs{
                 continue;
             }
             move_list->move_legality[i] = true;
+            cummulative_nodes = nodes;
             best = -search_driver(depth-1, -beta, -alpha);
+            old_nodes = nodes - cummulative_nodes;
             take_back();
             move_list->move_score[i] = ((side==WHITE)?best:-best);
-            /*cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
-                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<endl;*/
+            cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
+                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<" nodes: "<<old_nodes<<endl;
         }
-        auto endTime = chrono::high_resolution_clock::now();
-        chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+        /*auto endTime = chrono::high_resolution_clock::now();
+        chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
+        //cout << " Loop took " << duration.count() << " milliseconds" << endl;
+        return *move_list;
+    }
+    /*############            DEEP SEARCH TEST FUNCTIONS            ############*/
+    static inline int deep_search_driver(int depth, int alpha, int beta){
+        int evaluation;
+        if(depth == 0)
+        {
+            nodes++;
+            return evaluate();
+        }
+        if(depth>=3)
+        {
+            copy_board();
+            side ^= 1;
+            enpassant = no_sq;
+            int score = -deep_search_driver(depth-1-2, -beta, -beta+1);
+            take_back();
+            if(score >= beta)
+            {
+                return beta;
+            }
+        }
+        moves move_list[1];
+        generate_moves(move_list);
+        if(move_list->count == 0)
+        {
+            cout<<"No move here..."<<endl;
+            return 0;
+        }
+        for(int i = 0; i<move_list->count; i++)
+        {
+            int move = move_list->moves[i];
+            copy_board();
+            if(!make_move(move, all_moves))
+            {
+                continue;
+            }
+            if(tension() == 0) continue;
+            evaluation = -deep_search_driver(depth-1, -beta, -alpha);
+            take_back();
+            if(evaluation >= beta)
+            {
+                return beta;
+            }
+            alpha = max(alpha, evaluation);
+        }
+        return alpha;
+    }    
+    static inline moves deep_search_test(moves *move_list, int depth, int alpha, int beta){
+        int best;
+        cout<<endl<<"Best Moves Evaluated : "<<endl<<"__________"<<endl;
+        for (int i = 0; i < move_list->count; i++)
+        {
+            int move = move_list->moves[i];
+            copy_board();
+            if(!make_move(move, all_moves))
+            {
+                continue;
+            }
+            best = -deep_search_driver(depth-1, -beta, -alpha);
+            take_back();
+            move_list->move_score[i] = ((side==WHITE)?best:-best);
+            cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
+                        " | depth: "<<depth<<" evaluated: "<<((side==WHITE)?best:-best)<<endl;
+            /*cout<<" Move: "; print_move(move);
+            cout<<" | Score: "<<move_list->move_score[i]<<endl;*/
+        }
+        return *move_list;
+    }
+    /*############            TENSION SEARCH TEST FUNCTIONS            ############*/
+    static inline int tension_search_driver(int depth, int alpha, int beta){
+        int tension_count;
+        if(depth == 0)
+        {
+            nodes++;
+            return tension();
+        }
+        moves move_list[1];
+        generate_moves(move_list);
+        if(move_list->count == 0)
+        {
+            cout<<"No move here..."<<endl;
+            return 0;
+        }
+        for(int i = 0; i<move_list->count; i++)
+        {
+            int move = move_list->moves[i];
+            copy_board();
+            if(!make_move(move, all_moves))
+            {
+                continue;
+            }
+            tension_count = -tension_search_driver(depth-1, -beta, -alpha);
+            //bestEvaluation = max(evaluation, bestEvaluation);
+            take_back();
+            if(tension() >= beta)
+            {
+                return beta;
+            }
+            alpha = max(alpha, tension_count);
+        }
+        return alpha;
+        //return bestEvaluation;
+    }
+    static inline moves tension_search_test(moves *move_list, int depth, int alpha, int beta){
+        int best;
+        cout<<endl<<"Evaluated Tensions : "<<endl<<"__________"<<endl;
+        //auto startTime = chrono::high_resolution_clock::now();
+        for (int i = 0; i < move_list->count; i++)
+        {
+            //sort_move_list(move_list);
+            int move = move_list->moves[i];
+            copy_board();
+            if(!make_move(move, all_moves))
+            {
+                continue;
+            }
+            best = -tension_search_driver(depth-1, -beta, -alpha);
+            take_back();
+            move_list->move_tension[i] = ((side==WHITE)?best:-best);
+            cout<<" move: "<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<
+                        " | depth: "<<depth<<" tension: "<<((side==WHITE)?best:-best)<<endl;
+        }
+        /*auto endTime = chrono::high_resolution_clock::now();
+        chrono::milliseconds duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);*/
         //cout << " Loop took " << duration.count() << " milliseconds" << endl;
         return *move_list;
     }

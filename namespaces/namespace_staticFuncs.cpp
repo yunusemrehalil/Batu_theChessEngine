@@ -21,7 +21,7 @@ namespace sif{
         move_list->moves[move_list->count] = move;
         move_list->count++;
     }
-    static inline void add_move_to_evaluated(EvaluatedMove *move_list, int move, int score)
+    static inline void add_move_to_evaluated(moves *move_list, int move, int score)
     {
         move_list->moves[move_list->count] = move;
         move_list->move_score[move_list->count] = score;

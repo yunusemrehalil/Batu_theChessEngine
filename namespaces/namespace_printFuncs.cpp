@@ -82,7 +82,7 @@ namespace printFuncs{
     }
     void print_move(int move)
     {
-        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)]<<endl;
+        cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<promoted_piece[get_move_promoted(move)];
     }
     void print_move_list(moves *move_list)
     {
