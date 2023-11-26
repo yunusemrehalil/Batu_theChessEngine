@@ -26,25 +26,26 @@ moves engine_moves[1];
 moves tension_moves[1];
 
 void parse_fen(const char* fen);
-void order_moves(moves* move_list);
 int find_best_move(moves* move_list, int depth);
 int parse_move(char* move_string);
 void print_top_infos();
 void clear_screen();
-moves findBestMove(const moves& evaluatedMoves);
+moves find_deeper_best_moves(const moves& evaluatedMoves);
 void computer_is_black();
 void computer_is_white();///will write soon
 
 int main()
 {
     init_all();
-    parse_fen(youtube_position);
-    print_top_infos();
-    print_chess_board();
-    int depth = 22;
-    *engine_moves = search_test(depth, NEGATIVEINFINITY, POSITIVEINFINITY);
+    parse_fen(start_position);
+    /*print_top_infos();
+    print_chess_board();*/
+    computer_is_black();
+    //int depth = 5;
+    //*engine_moves = search_test(depth, NEGATIVEINFINITY, POSITIVEINFINITY);
     //print_move_list(engine_moves);
-    find_best_move(engine_moves, depth+6);
+    /*cout<<" Best move: ";
+    print_move(find_best_move(engine_moves, depth+2));*/
     //cout<<endl<<"____________________"<<endl;
     //*tension_moves = tension_search_test(engine_moves, depth, NEGATIVEINFINITY, POSITIVEINFINITY);
     cin.get();
@@ -126,32 +127,22 @@ void parse_fen(const char* fen) {
     occupancy_bitboards[BOTH] |= occupancy_bitboards[WHITE];
     occupancy_bitboards[BOTH] |= occupancy_bitboards[BLACK];
 }
-void order_moves(moves* move_list) {
-    for (int i = 0; i < move_list->count; i++)
-    {
-        int move = move_list->moves[i];
-        int move_score_guess = 0;
-        int source_piece = get_move_piece(move);
-        int target_piece = get_captured_piece(move);
-        if (get_move_capture(move))
-        {
-            move_score_guess = 10 * piece_value[target_piece] - piece_value[source_piece];
-            cout << ascii_pieces[source_piece] << ascii_pieces[target_piece] << ": " << move_score_guess << endl;
-        }
-    }
-}
 int find_best_move(moves* moves_list, int depth) {
     int count = moves_list->count;
     moves* evaluated_move_list = (moves*)malloc(count * sizeof(moves));
     evaluated_move_list->count = 0;
     for (int i = 0; i < count; i++) {
-        if (moves_list->move_legality[i] == 1)
+        if (moves_list->move_legality[i] == true)
         {
             add_move_to_evaluated(evaluated_move_list, moves_list->moves[i], moves_list->move_score[i]);
         }
     }
-    moves bestMove = findBestMove(*evaluated_move_list);
-    moves result_list = deep_search_test(&bestMove, depth, NEGATIVEINFINITY, POSITIVEINFINITY);
+    moves deeper_best_move = find_deeper_best_moves(*evaluated_move_list);
+    moves result_list = deep_search_test(&deeper_best_move, depth, NEGATIVEINFINITY, POSITIVEINFINITY);
+    sort_move_list_according_to_evaluate_and_guess(&result_list);
+    /*cout<<" RESULT LIST SORTING...";
+    print_move_list(&result_list);
+    cout<<" __________"<<endl;*/
     /*cout << " New Best Moves: Move        Score "<<endl;
     for (int i = 0; i < new_best_moves.count; ++i) {
         cout<<"                ";
@@ -174,7 +165,7 @@ int find_best_move(moves* moves_list, int depth) {
                     <<" "<<evaluated_move_list->move_score[move_count]<<endl;
     }
     cout<<" Total number of moves : "<<evaluated_move_list->count<<endl;*/
-    return bestMove.moves[0];
+    return result_list.moves[0];
     /*(side == WHITE)? best_move = best_move_WHITE: best_move = best_move_BLACK;
     cout<<endl<<" Best move for "<<((side==WHITE)?"white: ":"black: ")<<square_to_coordinate[get_move_source(best_move)]
             <<square_to_coordinate[get_move_target(best_move)]<<promoted_piece[get_move_promoted(best_move)]<<endl;*/
@@ -213,33 +204,37 @@ int parse_move(char* move_string)
     }
     return 0;
 }
-moves findBestMove(const moves& evaluatedMoves) {
-    moves bestMove;
-    bestMove.count = 0;
-    bestMove.move_score[0] = (side == WHITE) ? INT_MIN : INT_MAX;
+moves find_deeper_best_moves(const moves& evaluatedMoves) {
+    moves deeper_best_move;
+    deeper_best_move.count = 0;
+    deeper_best_move.move_score[0] = (side == WHITE) ? INT_MIN : INT_MAX;
     for (int i = 0; i < evaluatedMoves.count; ++i) {
         if (side == WHITE) {
-            if (evaluatedMoves.move_score[i] > bestMove.move_score[0]) {
-                bestMove.count = 1;
-                bestMove.moves[0] = evaluatedMoves.moves[i];
-                bestMove.move_score[0] = evaluatedMoves.move_score[i];
+            if (evaluatedMoves.move_score[i] > deeper_best_move.move_score[0]) {
+                deeper_best_move.count = 1;
+                deeper_best_move.moves[0] = evaluatedMoves.moves[i];
+                deeper_best_move.move_score[0] = evaluatedMoves.move_score[i];
+                deeper_best_move.move_legality[0] = true;
             }
-            else if (evaluatedMoves.move_score[i] == bestMove.move_score[0]) {
-                bestMove.moves[bestMove.count] = evaluatedMoves.moves[i];
-                bestMove.move_score[bestMove.count] = evaluatedMoves.move_score[i];
-                bestMove.count++;
+            else if (evaluatedMoves.move_score[i] == deeper_best_move.move_score[0]) {
+                deeper_best_move.moves[deeper_best_move.count] = evaluatedMoves.moves[i];
+                deeper_best_move.move_score[deeper_best_move.count] = evaluatedMoves.move_score[i];
+                deeper_best_move.move_legality[deeper_best_move.count] = true;
+                deeper_best_move.count++;
             }
         }
         else {
-            if (evaluatedMoves.move_score[i] < bestMove.move_score[0]) {
-                bestMove.count = 1;
-                bestMove.moves[0] = evaluatedMoves.moves[i];
-                bestMove.move_score[0] = evaluatedMoves.move_score[i];
+            if (evaluatedMoves.move_score[i] < deeper_best_move.move_score[0]) {
+                deeper_best_move.count = 1;
+                deeper_best_move.moves[0] = evaluatedMoves.moves[i];
+                deeper_best_move.move_score[0] = evaluatedMoves.move_score[i];
+                deeper_best_move.move_legality[0] = true;
             }
-            else if (evaluatedMoves.move_score[i] == bestMove.move_score[0]) {
-                bestMove.moves[bestMove.count] = evaluatedMoves.moves[i];
-                bestMove.move_score[bestMove.count] = evaluatedMoves.move_score[i];
-                bestMove.count++;
+            else if (evaluatedMoves.move_score[i] == deeper_best_move.move_score[0]) {
+                deeper_best_move.moves[deeper_best_move.count] = evaluatedMoves.moves[i];
+                deeper_best_move.move_score[deeper_best_move.count] = evaluatedMoves.move_score[i];
+                deeper_best_move.move_legality[deeper_best_move.count] = true;
+                deeper_best_move.count++;
             }
         }
     
@@ -250,7 +245,7 @@ moves findBestMove(const moves& evaluatedMoves) {
             cout<<" | score: "<<bestMove.move_score[i]<<endl;
         }
         cout<<"______________________"<<endl;*/
-    return bestMove;
+    return deeper_best_move;
 }
 void print_top_infos() {
     cout << endl << " Current Evaluation: " << evaluate() << " | Current Tension: " << tension() << endl;
@@ -273,8 +268,8 @@ void computer_is_black(){
             cout << endl << " Illegal move, please do a legal move or write it in correct format. (Ex. e2e4, a7a8q...)" << endl;
             continue;
         }
-        *engine_moves = search_test(5, NEGATIVEINFINITY, POSITIVEINFINITY);
-        best_engine_move = find_best_move(engine_moves, 5);
+        *engine_moves = search_test(6, NEGATIVEINFINITY, POSITIVEINFINITY);
+        best_engine_move = find_best_move(engine_moves, 7);
         clear_screen();
         cout << " Batu is playing: ";
         print_move(best_engine_move);

@@ -141,6 +141,8 @@ const char* castling_position = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
 const char* castling_trying = "r3k2r/8/4B3/8/8/7n/8/R3K2R b KQkq - 0 1";
 const char* knight_f6_position = "rnbqkb1r/p1pppppp/1p3n2/7Q/4P3/8/PPPP1PPP/RNB1KBNR w KQkq - 2 3";
 const char* youtube_position = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1";
+const char* e4b6e5_position = "rnbqkbnr/p1pppppp/1p6/4P3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
+const char* e3f5_position = "rnbqkbnr/ppppp1pp/8/5p2/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
 const U64 not_a_file = 18374403900871474942ULL;
 const U64 not_h_file = 9187201950435737471ULL;
 const U64 not_gh_file = 4557430888798830399ULL;
@@ -236,5 +238,6 @@ typedef struct
     int move_score[256];
     int move_tension[256];
     bool move_legality[256];
+    int move_score_guess[256];
 }moves;
 #endif

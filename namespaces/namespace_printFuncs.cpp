@@ -91,40 +91,24 @@ namespace printFuncs{
             cout<<endl<<" No move in the list!"<<endl;
             return;
         }
-        cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking    legality     score"<<endl;
+        cout<<endl<<" move   piece   capture   doublepawn   enpassant   castling   checking   legality    score     score_guess"<<endl;
         for(int move_count=0; move_count<move_list->count; move_count++)
         {
             int move = move_list->moves[move_count];
-            cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<(get_move_promoted(move)?promoted_piece[get_move_promoted(move)]:' ')<<"   "<<
-                            ascii_pieces[get_move_piece(move)]
-                            <<"        "<<(get_move_capture(move)?1:0)
-                            <<"          "<<(get_move_doublepawn(move)?1:0)
-                            <<"             "<<(get_move_enpassant(move)?1:0)
-                            <<"            "<<(get_move_castling(move)?1:0)
-                            <<"           "<<(get_move_checking(move)?1:0)
-                            <<"           "<<move_list->move_legality[move_count]
-                            <<"            "<<move_list->move_score[move_count]<<endl;
+            cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]
+                            <<(get_move_promoted(move)?promoted_piece[get_move_promoted(move)]:' ')
+                            <<"  "<<ascii_pieces[get_move_piece(move)]
+                            <<"       "<<(get_move_capture(move)?1:0)
+                            <<"         "<<(get_move_doublepawn(move)?1:0)
+                            <<"            "<<(get_move_enpassant(move)?1:0)
+                            <<"           "<<(get_move_castling(move)?1:0)
+                            <<"          "<<(get_move_checking(move)?1:0)
+                            <<"          "<<((move_list->move_legality[move_count])?1:0)
+                            <<"           "<<move_list->move_score[move_count]
+                            <<"           "<<move_list->move_score_guess[move_count]<<endl;
         }
-        cout<<" Total number of moves : "<<move_list->count<<endl;
+        cout<<endl<<" Total number of moves : "<<move_list->count<<endl;
     }
-    void print_evaluated_move_list(vector<moves> move_list){
-        cout<<endl<<" move    piece    capture    doublepawn    enpassant    castling    checking    score"<<endl;
-        for(int move_count=0; move_count<move_list.size(); move_count++)
-        {
-            //move_list[move_count].moves[move_count];
-            int move = move_list[move_count].moves[move_count];
-            cout<<' '<<square_to_coordinate[get_move_source(move)]<<square_to_coordinate[get_move_target(move)]<<(get_move_promoted(move)?promoted_piece[get_move_promoted(move)]:' ')<<"   "<<
-                            ascii_pieces[get_move_piece(move)]
-                            <<"        "<<(get_move_capture(move)?1:0)
-                            <<"          "<<(get_move_doublepawn(move)?1:0)
-                            <<"             "<<(get_move_enpassant(move)?1:0)
-                            <<"            "<<(get_move_castling(move)?1:0)
-                            <<"           "<<(get_move_checking(move)?1:0)
-                            <<"           "<<move_list[move_count].move_score[move_count]<<endl;
-        }
-        cout<<" Total number of moves : "<<move_list.size()<<endl;
-    }
-
 }
 
 #endif

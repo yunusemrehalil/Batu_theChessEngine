@@ -531,13 +531,16 @@ namespace sif{
                         //quite move
                         if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
                         {
-                            /*legal_moves.push_back(source + target);
+                            //legal_moves.push_back(source + target);
                             //quiet check move
                             if (piece_bitboards[king] & knight_attacks[target_square]) 
                             {
-                                legal_moves.back() += "+";
-                            }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
+                            }
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                            }
                         }
                         //capture move
                         else 
@@ -574,13 +577,16 @@ namespace sif{
                         //quite move
                         if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
                         {
-                            /*legal_moves.push_back(source + target);
+                            //legal_moves.push_back(source + target);
                             //quiet check move
                             if (piece_bitboards[king] & get_bishop_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                legal_moves.back() += "+";
-                            }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
+                            }
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                            }
                         }
                         //capture move
                         else 
@@ -636,13 +642,16 @@ namespace sif{
                         //quite move
                         if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
                         {
-                            /*legal_moves.push_back(source + target);
+                            //legal_moves.push_back(source + target);
                             //quiet check move
                             if (piece_bitboards[king] & get_rook_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                legal_moves.back() += "+";
-                            }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
+                            }
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                            }
                         }
                         //capture move
                         else 
@@ -697,13 +706,16 @@ namespace sif{
                         //quite move
                         if (!get_bit(occupancy_bitboards[side == WHITE ? BLACK : WHITE], target_square)) 
                         {
-                            /*legal_moves.push_back(source + target);
+                            //legal_moves.push_back(source + target);
                             //quiet check move
                             if (piece_bitboards[king] & get_queen_attacks(target_square, occupancy_bitboards[BOTH])) 
                             {
-                                legal_moves.back() += "+";
-                            }*/
-                            add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 1));
+                            }
+                            else
+                            {
+                                add_move(move_list, encode_move(source_square, target_square, piece, 0, 0, 0, 0, 0, 0));
+                            }
                         }
                         //capture move
                         else 
@@ -1006,6 +1018,38 @@ namespace sif{
             }
         }
         return target_piece;
+    }
+    static inline void sort_move_list_according_to_evaluate_and_guess(moves *move_list){
+        if(side==WHITE)
+        {
+            for (int i = 0; i < move_list->count - 1; ++i) 
+            {
+                for (int j = 0; j < move_list->count - i - 1; ++j) {
+                    if (move_list->move_score[j] > move_list->move_score[j + 1]) {
+                        swap(move_list->moves[j], move_list->moves[j + 1]);
+                        swap(move_list->move_score[j], move_list->move_score[j + 1]);
+                        swap(move_list->move_tension[j], move_list->move_tension[j + 1]);
+                        swap(move_list->move_legality[j], move_list->move_legality[j + 1]);
+                        swap(move_list->move_score_guess[j], move_list->move_score_guess[j + 1]);
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < move_list->count - 1; ++i) 
+            {
+                for (int j = 0; j < move_list->count - i - 1; ++j) {
+                    if (move_list->move_score[j] < move_list->move_score[j + 1]) {
+                        swap(move_list->moves[j], move_list->moves[j + 1]);
+                        swap(move_list->move_score[j], move_list->move_score[j + 1]);
+                        swap(move_list->move_tension[j], move_list->move_tension[j + 1]);
+                        swap(move_list->move_legality[j], move_list->move_legality[j + 1]);
+                        swap(move_list->move_score_guess[j], move_list->move_score_guess[j + 1]);
+                    }
+                }
+            }
+        }  
     }
 }
 #endif
