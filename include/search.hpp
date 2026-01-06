@@ -7,6 +7,7 @@
 #include "position.hpp"
 #include "movegen.hpp"
 #include "nn_eval.hpp"
+#include "tt.hpp"
 #include <algorithm>
 
 // Forward declaration of UCI option
@@ -70,15 +71,11 @@ inline void order_moves(Position& pos, MoveList& moves) {
     }
 }
 
-inline void sort_moves(MoveList& moves, int is_white) {
-    // Bubble sort (simple, works for small lists)
+inline void sort_moves(MoveList& moves) {
+    // Bubble sort - lower score_guess = better (negative values used for good moves)
     for (int i = 0; i < moves.count - 1; i++) {
         for (int j = 0; j < moves.count - i - 1; j++) {
-            bool should_swap = is_white ? 
-                (moves.score_guess[j] < moves.score_guess[j + 1]) :
-                (moves.score_guess[j] > moves.score_guess[j + 1]);
-            
-            if (should_swap) {
+            if (moves.score_guess[j] > moves.score_guess[j + 1]) {
                 std::swap(moves.moves[j], moves.moves[j + 1]);
                 std::swap(moves.scores[j], moves.scores[j + 1]);
                 std::swap(moves.legality[j], moves.legality[j + 1]);
@@ -110,7 +107,7 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
     MoveList moves;
     pos.generate_moves(moves);
     order_moves(pos, moves);
-    sort_moves(moves, pos.side == WHITE);
+    sort_moves(moves);
     
     for (int i = 0; i < moves.count; i++) {
         // Only search captures
@@ -132,21 +129,43 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
 }
 
 // =============================================================================
-// Alpha-Beta Search
+// Alpha-Beta Search with TT
 // =============================================================================
 
-inline int negamax(Position& pos, int depth, int alpha, int beta) {
+inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0) {
+    // Generate hash key for TT
+    U64 hash_key = TT::generate_hash_key(pos);
+    int tt_score, tt_move = 0;
+    
+    // TT probe: check if we've seen this position before
+    if (TT::probe(hash_key, depth, ply, alpha, beta, tt_score, tt_move)) {
+        return tt_score;
+    }
+    
     if (depth == 0) {
         return quiescence(pos, alpha, beta);
     }
     
+    int original_alpha = alpha;
     MoveList moves;
     pos.generate_moves(moves);
     order_moves(pos, moves);
-    sort_moves(moves, pos.side == WHITE);
     
-    if (moves.count == 0)
-        return 0;  // Stalemate or checkmate handling would go here
+    // TT move ordering: if we have a TT move, boost its priority
+    if (tt_move != 0) {
+        for (int i = 0; i < moves.count; i++) {
+            if (moves.moves[i] == tt_move) {
+                moves.score_guess[i] = -1000000;  // Highest priority
+                break;
+            }
+        }
+    }
+    
+    sort_moves(moves);
+    
+    int legal_moves = 0;
+    int best_move = 0;
+    int best_score = -INFINITY_SCORE;
     
     for (int i = 0; i < moves.count; i++) {
         Position backup;
@@ -155,17 +174,38 @@ inline int negamax(Position& pos, int depth, int alpha, int beta) {
         if (!pos.make_move(moves.moves[i], ALL_MOVES))
             continue;
         
+        legal_moves++;
         pos.nodes++;
-        int score = -negamax(pos, depth - 1, -beta, -alpha);
+        int score = -negamax(pos, depth - 1, -beta, -alpha, ply + 1);
         
         backup.copy_to(pos);
         
-        if (score >= beta)
+        if (score > best_score) {
+            best_score = score;
+            best_move = moves.moves[i];
+        }
+        
+        if (score >= beta) {
+            // Store with BETA flag (lower bound - failed high)
+            TT::store(hash_key, beta, depth, ply, TT::TT_BETA, best_move);
             return beta;
+        }
         
         if (score > alpha)
             alpha = score;
     }
+    
+    // Checkmate or stalemate detection
+    if (legal_moves == 0) {
+        int king_sq = Position::get_ls1b_index(pos.piece_bitboards[pos.side == WHITE ? K : k]);
+        if (pos.is_square_attacked(king_sq, pos.side ^ 1))
+            return -CHECKMATE_SCORE + ply;  // Checkmate: prefer faster mates
+        return STALEMATE_SCORE;  // Stalemate
+    }
+    
+    // Store result in TT
+    TT::TTFlag flag = (alpha > original_alpha) ? TT::TT_EXACT : TT::TT_ALPHA;
+    TT::store(hash_key, alpha, depth, ply, flag, best_move);
     
     return alpha;
 }
@@ -174,7 +214,7 @@ inline MoveList search(Position& pos, int depth) {
     MoveList moves;
     pos.generate_moves(moves);
     order_moves(pos, moves);
-    sort_moves(moves, pos.side == WHITE);
+    sort_moves(moves);
     
     for (int i = 0; i < moves.count; i++) {
         Position backup;

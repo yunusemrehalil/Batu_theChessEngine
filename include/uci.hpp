@@ -91,25 +91,83 @@ inline void parse_position(Position& pos, char* command) {
 // =============================================================================
 
 inline void parse_go(Position& pos, char* command) {
-    int depth = 6;  // Default depth
+    int max_depth = 64;
+    int time_limit_ms = 0;
+    int move_time = 0;
     
+    // Parse depth limit
     char* depth_str = std::strstr(command, "depth");
     if (depth_str != nullptr) {
-        depth = std::atoi(depth_str + 6);
+        max_depth = std::atoi(depth_str + 6);
+    }
+    
+    // Parse movetime (fixed time per move)
+    char* movetime_str = std::strstr(command, "movetime");
+    if (movetime_str != nullptr) {
+        move_time = std::atoi(movetime_str + 9);
+        time_limit_ms = move_time;
+    }
+    
+    // Parse wtime/btime (remaining time on clock)
+    char* wtime_str = std::strstr(command, "wtime");
+    char* btime_str = std::strstr(command, "btime");
+    if (wtime_str || btime_str) {
+        int our_time = 0;
+        if (pos.side == WHITE && wtime_str) {
+            our_time = std::atoi(wtime_str + 6);
+        } else if (pos.side == BLACK && btime_str) {
+            our_time = std::atoi(btime_str + 6);
+        }
+        // Simple time management: use ~2.5% of remaining time
+        if (our_time > 0 && time_limit_ms == 0) {
+            time_limit_ms = our_time / 40;  // Assume ~40 moves left
+            if (time_limit_ms < 100) time_limit_ms = 100;  // Min 100ms
+        }
+    }
+    
+    // Parse infinite (no time limit, just depth)
+    if (std::strstr(command, "infinite")) {
+        time_limit_ms = 0;  // No time limit
     }
     
     pos.nodes = 0;
-    
+    int best_move = 0;
+    int best_score = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    MoveList moves = Search::search(pos, depth);
-    auto end = std::chrono::high_resolution_clock::now();
     
-    int best_move = Search::find_best_move(pos, moves);
+    // Iterative deepening loop
+    for (int depth = 1; depth <= max_depth; depth++) {
+        MoveList moves = Search::search(pos, depth);
+        best_move = Search::find_best_move(pos, moves);
+        
+        // Find the score of best move
+        for (int i = 0; i < moves.count; i++) {
+            if (moves.moves[i] == best_move) {
+                best_score = moves.scores[i];
+                break;
+            }
+        }
+        
+        auto now = std::chrono::high_resolution_clock::now();
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+        
+        // Output info
+        std::cout << "info depth " << depth 
+                  << " score cp " << best_score
+                  << " nodes " << pos.nodes 
+                  << " time " << elapsed_ms;
+        if (elapsed_ms > 0) {
+            std::cout << " nps " << (pos.nodes * 1000 / elapsed_ms);
+        }
+        std::cout << std::endl;
+        
+        // Time check: stop if we've used > 50% of allotted time
+        // (next iteration would likely exceed limit)
+        if (time_limit_ms > 0 && elapsed_ms > time_limit_ms / 2) {
+            break;
+        }
+    }
     
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    
-    std::cout << "info depth " << depth << " nodes " << pos.nodes 
-              << " time " << duration.count() << std::endl;
     std::cout << "bestmove ";
     Position::print_move(best_move);
     std::cout << std::endl;
