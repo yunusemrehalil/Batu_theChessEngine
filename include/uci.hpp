@@ -9,6 +9,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdio>
+#include <chrono>
 
 namespace UCI {
 
@@ -94,12 +95,61 @@ inline void parse_go(Position& pos, char* command) {
     }
     
     pos.nodes = 0;
+    
+    auto start = std::chrono::high_resolution_clock::now();
     MoveList moves = Search::search(pos, depth);
+    auto end = std::chrono::high_resolution_clock::now();
+    
     int best_move = Search::find_best_move(pos, moves);
     
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    
+    std::cout << "info depth " << depth << " nodes " << pos.nodes 
+              << " time " << duration.count() << std::endl;
     std::cout << "bestmove ";
     Position::print_move(best_move);
     std::cout << std::endl;
+}
+
+// =============================================================================
+// Benchmark Command
+// =============================================================================
+
+inline void run_benchmark(Position& pos) {
+    const char* positions[] = {
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"  // Position 2
+    };
+    const char* names[] = { "Starting Position", "Position 2 (Kiwipete)" };
+    int depths[] = { 5, 6, 7 };
+    
+    std::cout << "\n=== BATU CHESS ENGINE BENCHMARK ===" << std::endl;
+    std::cout << "With Alpha-Beta Pruning + Move Ordering\n" << std::endl;
+    
+    for (int p = 0; p < 2; p++) {
+        std::cout << "### " << names[p] << " ###" << std::endl;
+        std::cout << "FEN: " << positions[p] << "\n" << std::endl;
+        
+        for (int d = 0; d < 3; d++) {
+            pos.parse_fen(positions[p]);
+            pos.nodes = 0;
+            
+            auto start = std::chrono::high_resolution_clock::now();
+            MoveList moves = Search::search(pos, depths[d]);
+            auto end = std::chrono::high_resolution_clock::now();
+            
+            int best_move = Search::find_best_move(pos, moves);
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            
+            std::cout << "Depth " << depths[d] << ": ";
+            std::cout << duration.count() << " ms, ";
+            std::cout << pos.nodes << " nodes, ";
+            std::cout << "Best: ";
+            Position::print_move(best_move);
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
 }
 
 // =============================================================================
@@ -140,6 +190,11 @@ inline void loop(Position& pos) {
         
         if (std::strncmp(input, "go", 2) == 0) {
             parse_go(pos, input);
+            continue;
+        }
+        
+        if (std::strncmp(input, "bench", 5) == 0) {
+            run_benchmark(pos);
             continue;
         }
         
