@@ -15,6 +15,12 @@ extern bool UseNN;
 namespace Search {
 
 // =============================================================================
+// Search Parameters
+// =============================================================================
+
+constexpr int MAX_QUIESCENCE_DEPTH = 8;
+
+// =============================================================================
 // Move Ordering
 // =============================================================================
 
@@ -83,16 +89,55 @@ inline void sort_moves(MoveList& moves, int is_white) {
 }
 
 // =============================================================================
+// Quiescence Search - Resolve Tactical Positions
+// =============================================================================
+
+inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
+    // Standing pat score
+    int stand_pat = (UseNN && NN::nn_loaded) ? 
+                    NN::evaluate(pos.piece_bitboards, pos.side) : 
+                    pos.evaluate();
+    
+    pos.nodes++;
+    
+    // Depth limit to prevent explosion
+    if (ply >= MAX_QUIESCENCE_DEPTH) return stand_pat;
+    
+    // Beta cutoff (standing pat)
+    if (stand_pat >= beta) return beta;
+    if (stand_pat > alpha) alpha = stand_pat;
+    
+    MoveList moves;
+    pos.generate_moves(moves);
+    order_moves(pos, moves);
+    sort_moves(moves, pos.side == WHITE);
+    
+    for (int i = 0; i < moves.count; i++) {
+        // Only search captures
+        if (!get_move_capture(moves.moves[i])) continue;
+        
+        Position backup;
+        pos.copy_to(backup);
+        
+        if (!pos.make_move(moves.moves[i], ALL_MOVES)) continue;
+        
+        int score = -quiescence(pos, -beta, -alpha, ply + 1);
+        backup.copy_to(pos);
+        
+        if (score >= beta) return beta;
+        if (score > alpha) alpha = score;
+    }
+    
+    return alpha;
+}
+
+// =============================================================================
 // Alpha-Beta Search
 // =============================================================================
 
 inline int negamax(Position& pos, int depth, int alpha, int beta) {
     if (depth == 0) {
-        pos.nodes++;
-        if (UseNN && NN::nn_loaded) {
-            return NN::evaluate(pos.piece_bitboards, pos.side);
-        }
-        return pos.evaluate();
+        return quiescence(pos, alpha, beta);
     }
     
     MoveList moves;
