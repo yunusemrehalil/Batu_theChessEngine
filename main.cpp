@@ -14,11 +14,15 @@
 
 #include "include/position.hpp"
 #include "include/attacks.hpp"
+#include "include/nn_eval.hpp"
 #include "include/uci.hpp"
 
 int main() {
     // Initialize attack tables (magic bitboards)
     AttackTables::init_all();
+    
+    // Initialize neural network (loads weights if available)
+    NN::init("weights.txt");
 
     // Create position and run UCI loop
     Position pos;

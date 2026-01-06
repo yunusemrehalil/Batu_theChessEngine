@@ -6,7 +6,11 @@
 
 #include "position.hpp"
 #include "movegen.hpp"
+#include "nn_eval.hpp"
 #include <algorithm>
+
+// Forward declaration of UCI option
+extern bool UseNN;
 
 namespace Search {
 
@@ -85,6 +89,9 @@ inline void sort_moves(MoveList& moves, int is_white) {
 inline int negamax(Position& pos, int depth, int alpha, int beta) {
     if (depth == 0) {
         pos.nodes++;
+        if (UseNN && NN::nn_loaded) {
+            return NN::evaluate(pos.piece_bitboards, pos.side);
+        }
         return pos.evaluate();
     }
     

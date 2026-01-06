@@ -6,10 +6,14 @@
 
 #include "position.hpp"
 #include "search.hpp"
+#include "nn_eval.hpp"
 #include <iostream>
 #include <cstring>
 #include <cstdio>
 #include <chrono>
+
+// UCI Options
+inline bool UseNN = true;  // Use neural network evaluation when available
 
 namespace UCI {
 
@@ -161,6 +165,7 @@ inline void loop(Position& pos) {
     
     std::cout << "id name Batu" << std::endl;
     std::cout << "id author Yunus Emre Halil" << std::endl;
+    std::cout << "option name UseNN type check default " << (NN::nn_loaded ? "true" : "false") << std::endl;
     std::cout << "uciok" << std::endl;
     
     while (true) {
@@ -175,6 +180,13 @@ inline void loop(Position& pos) {
         
         if (std::strncmp(input, "isready", 7) == 0) {
             std::cout << "readyok" << std::endl;
+            continue;
+        }
+        
+        if (std::strncmp(input, "setoption", 9) == 0) {
+            if (std::strstr(input, "UseNN")) {
+                UseNN = (std::strstr(input, "true") != nullptr);
+            }
             continue;
         }
         
@@ -193,6 +205,13 @@ inline void loop(Position& pos) {
             continue;
         }
         
+        if (std::strncmp(input, "eval", 4) == 0) {
+            int nn_score = NN::evaluate(pos.piece_bitboards, pos.side);
+            int static_score = pos.evaluate();
+            std::cout << "info string NN: " << nn_score << " cp, Static: " << static_score << " cp" << std::endl;
+            continue;
+        }
+        
         if (std::strncmp(input, "bench", 5) == 0) {
             run_benchmark(pos);
             continue;
@@ -204,6 +223,7 @@ inline void loop(Position& pos) {
         if (std::strncmp(input, "uci", 3) == 0) {
             std::cout << "id name Batu" << std::endl;
             std::cout << "id author Yunus Emre Halil" << std::endl;
+            std::cout << "option name UseNN type check default " << (NN::nn_loaded ? "true" : "false") << std::endl;
             std::cout << "uciok" << std::endl;
         }
     }

@@ -37,6 +37,7 @@ __pycache__/
 # Training artifacts
 training/checkpoints/
 training/*.pt
+training/positions.csv
 weights.txt
 *.log
 
