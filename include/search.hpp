@@ -147,7 +147,7 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
 // Alpha-Beta Search with TT
 // =============================================================================
 
-inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0) {
+inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, bool do_null = true) {
     // Generate hash key for TT
     U64 hash_key = TT::generate_hash_key(pos);
     int tt_score, tt_move = 0;
@@ -159,6 +159,41 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0) {
     
     if (depth == 0) {
         return quiescence(pos, alpha, beta);
+    }
+    
+    // Check detection (needed for NMP safety and checkmate detection)
+    int king_sq = Position::get_ls1b_index(pos.piece_bitboards[pos.side == WHITE ? K : k]);
+    bool in_check = pos.is_square_attacked(king_sq, pos.side ^ 1);
+    
+    // =========================================================================
+    // Null Move Pruning (NMP)
+    // Safety gates: not in check, eval >= beta, non-pawn material, no mate scores
+    // =========================================================================
+    if (do_null && !in_check && depth >= 3 && std::abs(beta) < CHECKMATE_SCORE - 100) {
+        // Get static eval for the safety gate
+        int eval = (UseNN && NN::nn_loaded) ? 
+                   NN::evaluate(pos.piece_bitboards, pos.side) : pos.evaluate();
+        
+        // Only try NMP if position looks good (eval >= beta)
+        if (eval >= beta) {
+            // Need non-pawn material to avoid zugzwang
+            U64 pieces = (pos.side == WHITE) 
+                ? (pos.piece_bitboards[N] | pos.piece_bitboards[B] | pos.piece_bitboards[R] | pos.piece_bitboards[Q])
+                : (pos.piece_bitboards[n] | pos.piece_bitboards[b] | pos.piece_bitboards[r] | pos.piece_bitboards[q]);
+            
+            if (pieces) {
+                Position backup;
+                pos.copy_to(backup);
+                pos.side ^= 1;
+                pos.enpassant = NO_SQUARE;
+                
+                // R=3 reduction, depth floor at 1
+                int score = -negamax(pos, std::max(1, depth - 4), -beta, -beta + 1, ply + 1, false);
+                backup.copy_to(pos);
+                
+                if (score >= beta) return beta;
+            }
+        }
     }
     
     int original_alpha = alpha;
@@ -210,10 +245,9 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0) {
             alpha = score;
     }
     
-    // Checkmate or stalemate detection
+    // Checkmate or stalemate detection (reuse in_check from above)
     if (legal_moves == 0) {
-        int king_sq = Position::get_ls1b_index(pos.piece_bitboards[pos.side == WHITE ? K : k]);
-        if (pos.is_square_attacked(king_sq, pos.side ^ 1))
+        if (in_check)
             return -CHECKMATE_SCORE + ply;  // Checkmate: prefer faster mates
         return STALEMATE_SCORE;  // Stalemate
     }
