@@ -94,14 +94,21 @@ inline bool load_weights(const std::string& path) {
 }
 
 // =============================================================================
-// Forward Pass
+// Forward Pass (Sparse First Layer)
 // =============================================================================
+
+// Maximum pieces on board (32 at start, can't exceed this)
+constexpr int MAX_ACTIVE_FEATURES = 32;
 
 inline int evaluate(const U64* piece_bitboards, int side) {
     if (!nn_loaded) return 0;
     
-    // Build input vector from bitboards
-    float input[INPUT_SIZE] = {0.0f};
+    // =========================================================================
+    // Step 1: Collect active feature indices (sparse representation)
+    // Instead of building a 768-element array, we just store which features are "on"
+    // =========================================================================
+    int active_features[MAX_ACTIVE_FEATURES];
+    int num_active = 0;
     
     for (int piece = 0; piece < 12; piece++) {
         U64 bb = piece_bitboards[piece];
@@ -113,19 +120,24 @@ inline int evaluate(const U64* piece_bitboards, int side) {
 #else
             int square = __builtin_ctzll(bb);
 #endif
-            input[piece * 64 + square] = 1.0f;
+            // Feature index = piece * 64 + square
+            active_features[num_active++] = piece * 64 + square;
             bb &= bb - 1;  // Clear LSB
         }
     }
     
-    // Layer 1: input -> hidden1 (ReLU)
+    // =========================================================================
+    // Step 2: Layer 1 - Sparse accumulation (only iterate active features)
+    // OLD: 256 neurons × 768 checks = 196,608 operations
+    // NEW: 256 neurons × ~32 active = ~8,192 operations
+    // =========================================================================
     float hidden1[HIDDEN1_SIZE];
     for (int j = 0; j < HIDDEN1_SIZE; j++) {
         float sum = bias_hidden1[j];
-        for (int i = 0; i < INPUT_SIZE; i++) {
-            if (input[i] > 0.0f) {  // Sparse optimization
-                sum += input[i] * weights_input_hidden1[i * HIDDEN1_SIZE + j];
-            }
+        // Only accumulate weights for active features
+        for (int k = 0; k < num_active; k++) {
+            int feature_idx = active_features[k];
+            sum += weights_input_hidden1[feature_idx * HIDDEN1_SIZE + j];
         }
         hidden1[j] = relu(sum);
     }
