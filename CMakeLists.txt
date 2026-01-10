@@ -6,23 +6,36 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Optimization flags for Release build
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /Ob2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od")
+else()
+    # GCC/Clang optimizations: -O3, native CPU, fast-math, LTO
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -ffast-math -flto -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+endif()
 
 # Main executable
 add_executable(batu main.cpp)
 
 # Include directories
 target_include_directories(batu PRIVATE 
-    ${CMAKE_SOURCE_DIR}/headers
     ${CMAKE_SOURCE_DIR}/include
 )
 
-# Compiler warnings
+# Compiler-specific options
 if(MSVC)
-    target_compile_options(batu PRIVATE /W4)
+    # MSVC: warnings + fast floating point + AVX2 if available
+    target_compile_options(batu PRIVATE /W4 /fp:fast)
+    # Enable AVX2 for modern CPUs (comment out for older CPUs)
+    # target_compile_options(batu PRIVATE /arch:AVX2)
 else()
     target_compile_options(batu PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# Enable Link-Time Optimization for Release
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set_property(TARGET batu PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
 # Build type default to Release
