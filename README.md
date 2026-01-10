@@ -1,15 +1,31 @@
 # Batu Chess Engine
 
-A UCI-compatible chess engine written in C++17.
+A UCI-compatible chess engine written in C++17 with neural network evaluation.
 
 ## Features
 
+### Board Representation
 - **Bitboard Representation**: 64-bit bitboards for efficient board state management
 - **Magic Bitboards**: Pre-computed attack tables for sliding pieces (bishops, rooks, queens)
+
+### Search
 - **Alpha-Beta Search**: Negamax algorithm with alpha-beta pruning
-- **Move Ordering**: MVV-LVA (Most Valuable Victim - Least Valuable Attacker) + center control + development bonuses
+- **Iterative Deepening**: Searches depth 1, 2, 3... with time management
+- **Transposition Table**: Zobrist hashing with 2^20 entries (~32MB), stores EXACT/ALPHA/BETA bounds
+- **Quiescence Search**: Resolves tactical positions by searching captures (max depth 8)
+- **Move Ordering**: MVV-LVA + TT move priority + center control + development bonuses
+- **Proper Mate Detection**: Returns `CHECKMATE_SCORE - ply` for shortest mate path
+
+### Evaluation
+- **Neural Network Evaluation**: 768→256→32→1 feedforward network
+  - Input: 12 pieces × 64 squares = 768 binary features
+  - Hidden layers: ReLU activation
+  - Output: tanh scaled to centipawns (×600)
+- **Fallback Evaluation**: Material counting when NN weights unavailable
+
+### Interface
 - **UCI Protocol**: Standard Universal Chess Interface for GUI compatibility
-- **Static Evaluation**: Material counting with piece-square considerations (prepared for neural network replacement)
+- **Time Control**: Supports `wtime`, `btime`, `movetime`, `depth`, `infinite`
 
 ## Architecture
 
@@ -17,16 +33,46 @@ A UCI-compatible chess engine written in C++17.
 Batu_theChessEngine/
 ├── main.cpp              # Entry point
 ├── CMakeLists.txt        # CMake build configuration
+├── weights.txt           # Neural network weights (exported from training)
 ├── include/
 │   ├── types.hpp         # Core types, constants, enums
 │   ├── magic_numbers.hpp # Pre-computed magic bitboard tables
 │   ├── position.hpp      # Position class (game state)
 │   ├── attacks.hpp       # Attack table generation
 │   ├── movegen.hpp       # Move generation and make_move
-│   ├── search.hpp        # Alpha-beta search with move ordering
-│   └── uci.hpp           # UCI protocol implementation
+│   ├── search.hpp        # Alpha-beta search with TT integration
+│   ├── nn_eval.hpp       # Neural network forward pass
+│   ├── tt.hpp            # Transposition table with Zobrist hashing
+│   └── uci.hpp           # UCI protocol + iterative deepening
+├── training/
+│   ├── train.py          # PyTorch training script
+│   ├── positions.csv     # Training data (FEN + Stockfish eval)
+│   └── checkpoints/      # Model checkpoints during training
 └── README.md
 ```
+
+## Neural Network
+
+The engine uses a simple feedforward neural network trained on ~1M Stockfish-labeled positions.
+
+### Architecture
+```
+Input (768) → Hidden1 (256, ReLU) → Hidden2 (32, ReLU) → Output (1, tanh)
+```
+
+### Input Encoding
+- 12 piece types × 64 squares = 768 binary features
+- Piece order: `P, R, N, B, Q, K, p, r, n, b, q, k` (matching `types.hpp` enum)
+- Square indexing: a8=0, b8=1, ..., h1=63
+
+### Training
+```bash
+cd training
+python train.py
+```
+- Uses PyTorch with CUDA support (if available)
+- MSE loss between predicted and Stockfish evaluations
+- Exports weights to `weights.txt` for C++ engine
 
 ## Building
 

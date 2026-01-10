@@ -186,13 +186,16 @@ inline void run_benchmark(Position& pos) {
     int depths[] = { 5, 6, 7 };
     
     std::cout << "\n=== BATU CHESS ENGINE BENCHMARK ===" << std::endl;
-    std::cout << "With Alpha-Beta Pruning + Move Ordering\n" << std::endl;
+    std::cout << "With Alpha-Beta + TT + Move Ordering + NN Eval\n" << std::endl;
     
     for (int p = 0; p < 2; p++) {
         std::cout << "### " << names[p] << " ###" << std::endl;
         std::cout << "FEN: " << positions[p] << "\n" << std::endl;
         
         for (int d = 0; d < 3; d++) {
+            // Clear TT for each test to get reproducible results
+            TT::clear();
+            
             pos.parse_fen(positions[p]);
             pos.nodes = 0;
             
