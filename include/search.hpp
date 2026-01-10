@@ -104,6 +104,15 @@ inline void sort_moves(MoveList& moves) {
 // Quiescence Search - Resolve Tactical Positions
 // =============================================================================
 
+// Delta margin for promotions (queen - pawn value)
+constexpr int DELTA_MARGIN = 200;
+
+// Piece values for delta pruning (absolute values, indexed by piece type)
+constexpr int CAPTURE_VALUES[12] = {
+    100, 500, 300, 320, 1000, 10000,  // White: P, R, N, B, Q, K
+    100, 500, 300, 320, 1000, 10000   // Black: p, r, n, b, q, k (same absolute values)
+};
+
 inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
     // Standing pat score
     int stand_pat = (UseNN && NN::nn_loaded) ? 
@@ -125,13 +134,37 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
     sort_moves(moves);
     
     for (int i = 0; i < moves.count; i++) {
+        int move = moves.moves[i];
+        
         // Only search captures
-        if (!get_move_capture(moves.moves[i])) continue;
+        if (!get_move_capture(move)) continue;
+        
+        // =====================================================================
+        // Delta Pruning: skip captures that can't raise alpha
+        // If stand_pat + captured_piece + margin < alpha, this capture is futile
+        // =====================================================================
+        int target_sq = get_move_target(move);
+        int captured_piece = NO_PIECE;
+        int start = (pos.side == WHITE) ? p : P;
+        int end = (pos.side == WHITE) ? k : K;
+        
+        for (int pc = start; pc <= end; pc++) {
+            if (get_bit(pos.piece_bitboards[pc], target_sq)) {
+                captured_piece = pc;
+                break;
+            }
+        }
+        
+        // Skip if capture can't raise alpha (with margin for promotions)
+        if (captured_piece != NO_PIECE) {
+            int gain = CAPTURE_VALUES[captured_piece];
+            if (stand_pat + gain + DELTA_MARGIN < alpha) continue;
+        }
         
         Position backup;
         pos.copy_to(backup);
         
-        if (!pos.make_move(moves.moves[i], ALL_MOVES)) continue;
+        if (!pos.make_move(move, ALL_MOVES)) continue;
         
         int score = -quiescence(pos, -beta, -alpha, ply + 1);
         backup.copy_to(pos);
