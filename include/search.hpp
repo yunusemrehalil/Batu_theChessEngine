@@ -71,17 +71,32 @@ inline void order_moves(Position& pos, MoveList& moves) {
     }
 }
 
-inline void sort_moves(MoveList& moves) {
-    // Bubble sort - lower score_guess = better (negative values used for good moves)
-    for (int i = 0; i < moves.count - 1; i++) {
-        for (int j = 0; j < moves.count - i - 1; j++) {
-            if (moves.score_guess[j] > moves.score_guess[j + 1]) {
-                std::swap(moves.moves[j], moves.moves[j + 1]);
-                std::swap(moves.scores[j], moves.scores[j + 1]);
-                std::swap(moves.legality[j], moves.legality[j + 1]);
-                std::swap(moves.score_guess[j], moves.score_guess[j + 1]);
-            }
+// Pick the best move from position 'start' to end, swap it to 'start'
+// This is O(n) per call but we often get cutoffs before searching all moves
+inline void pick_best_move(MoveList& moves, int start) {
+    int best_idx = start;
+    int best_score = moves.score_guess[start];
+    
+    for (int i = start + 1; i < moves.count; i++) {
+        if (moves.score_guess[i] < best_score) {  // Lower = better
+            best_score = moves.score_guess[i];
+            best_idx = i;
         }
+    }
+    
+    if (best_idx != start) {
+        std::swap(moves.moves[start], moves.moves[best_idx]);
+        std::swap(moves.scores[start], moves.scores[best_idx]);
+        std::swap(moves.legality[start], moves.legality[best_idx]);
+        std::swap(moves.score_guess[start], moves.score_guess[best_idx]);
+    }
+}
+
+inline void sort_moves(MoveList& moves) {
+    // Selection sort - O(n²) worst case but simpler than bubble sort
+    // In practice with good move ordering + cutoffs, we rarely sort everything
+    for (int i = 0; i < moves.count - 1; i++) {
+        pick_best_move(moves, i);
     }
 }
 
