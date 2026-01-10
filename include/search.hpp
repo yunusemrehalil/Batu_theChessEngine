@@ -9,6 +9,7 @@
 #include "nn_eval.hpp"
 #include "tt.hpp"
 #include <algorithm>
+#include <cmath>
 
 // Forward declaration of UCI option
 extern bool UseNN;
@@ -20,12 +21,66 @@ namespace Search {
 // =============================================================================
 
 constexpr int MAX_QUIESCENCE_DEPTH = 8;
+constexpr int MAX_PLY = 64;
+
+// =============================================================================
+// Killer Moves Table
+// Two killer moves per ply - quiet moves that caused beta cutoffs
+// =============================================================================
+
+inline int killer_moves[MAX_PLY][2];
+
+inline void clear_killers() {
+    for (int ply = 0; ply < MAX_PLY; ply++) {
+        killer_moves[ply][0] = 0;
+        killer_moves[ply][1] = 0;
+    }
+}
+
+inline void store_killer(int move, int ply) {
+    // Don't store captures as killers (they're already ordered by MVV-LVA)
+    if (get_move_capture(move)) return;
+    if (ply >= MAX_PLY) return;
+    
+    // Shift: move slot 0 -> slot 1, new move -> slot 0
+    if (killer_moves[ply][0] != move) {
+        killer_moves[ply][1] = killer_moves[ply][0];
+        killer_moves[ply][0] = move;
+    }
+}
+
+inline bool is_killer(int move, int ply) {
+    if (ply >= MAX_PLY) return false;
+    return (move == killer_moves[ply][0] || move == killer_moves[ply][1]);
+}
+
+// =============================================================================
+// LMR Reduction Table (precomputed log-based reductions)
+// =============================================================================
+
+inline int lmr_table[MAX_PLY][MAX_MOVES];
+inline bool lmr_initialized = false;
+
+inline void init_lmr() {
+    if (lmr_initialized) return;
+    
+    for (int depth = 1; depth < MAX_PLY; depth++) {
+        for (int move_count = 1; move_count < MAX_MOVES; move_count++) {
+            // Classic LMR formula: reduction based on depth and move count
+            // R = log(depth) * log(moveCount) / 2
+            lmr_table[depth][move_count] = static_cast<int>(
+                0.75 + std::log(depth) * std::log(move_count) / 2.25
+            );
+        }
+    }
+    lmr_initialized = true;
+}
 
 // =============================================================================
 // Move Ordering
 // =============================================================================
 
-inline void order_moves(Position& pos, MoveList& moves) {
+inline void order_moves(Position& pos, MoveList& moves, int ply = 0) {
     for (int i = 0; i < moves.count; i++) {
         moves.score_guess[i] = 0;
         int move = moves.moves[i];
@@ -34,7 +89,7 @@ inline void order_moves(Position& pos, MoveList& moves) {
         int promoted = get_move_promoted(move);
         int is_check = get_move_checking(move);
         
-        // MVV-LVA for captures
+        // MVV-LVA for captures (highest priority after TT move)
         if (get_move_capture(move)) {
             int target_piece = P;
             int start = (pos.side == WHITE) ? p : P;
@@ -46,28 +101,36 @@ inline void order_moves(Position& pos, MoveList& moves) {
                     break;
                 }
             }
-            moves.score_guess[i] = -(10 * PIECE_VALUES[target_piece] - PIECE_VALUES[source_piece]);
+            // Captures: -900000 to -800000 range (lower = better)
+            moves.score_guess[i] = -900000 + (10 * PIECE_VALUES[target_piece] - PIECE_VALUES[source_piece]);
         }
-        
-        // Promotion bonus
-        if (promoted)
-            moves.score_guess[i] += -PIECE_VALUES[promoted];
-        
-        // Center control bonus
-        if (target_square == d4 || target_square == d5 || 
-            target_square == e4 || target_square == e5)
-            moves.score_guess[i] += PIECE_VALUES[source_piece];
-        
-        // Development bonus
-        if ((source_piece == B && (target_square == b2 || target_square == g2)) ||
-            (source_piece == b && (target_square == b7 || target_square == g7)) ||
-            (source_piece == N && (target_square == c3 || target_square == f3)) ||
-            (source_piece == n && (target_square == c6 || target_square == f6)))
-            moves.score_guess[i] += PIECE_VALUES[source_piece];
-        
-        // Check bonus
-        if (is_check)
-            moves.score_guess[i] += PIECE_VALUES[source_piece] / 10;
+        // Killer moves (high priority for quiet moves)
+        else if (is_killer(move, ply)) {
+            // Killers: -700000 range
+            moves.score_guess[i] = (move == killer_moves[ply][0]) ? -700000 : -600000;
+        }
+        // Quiet moves
+        else {
+            // Promotion bonus
+            if (promoted)
+                moves.score_guess[i] += -PIECE_VALUES[promoted];
+            
+            // Center control bonus
+            if (target_square == d4 || target_square == d5 || 
+                target_square == e4 || target_square == e5)
+                moves.score_guess[i] += PIECE_VALUES[source_piece];
+            
+            // Development bonus
+            if ((source_piece == B && (target_square == b2 || target_square == g2)) ||
+                (source_piece == b && (target_square == b7 || target_square == g7)) ||
+                (source_piece == N && (target_square == c3 || target_square == f3)) ||
+                (source_piece == n && (target_square == c6 || target_square == f6)))
+                moves.score_guess[i] += PIECE_VALUES[source_piece];
+            
+            // Check bonus
+            if (is_check)
+                moves.score_guess[i] += PIECE_VALUES[source_piece] / 10;
+        }
     }
 }
 
@@ -232,7 +295,7 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
     int original_alpha = alpha;
     MoveList moves;
     pos.generate_moves(moves);
-    order_moves(pos, moves);
+    order_moves(pos, moves, ply);
     
     // TT move ordering: if we have a TT move, boost its priority
     if (tt_move != 0) {
@@ -251,24 +314,59 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
     int best_score = -INFINITY_SCORE;
     
     for (int i = 0; i < moves.count; i++) {
+        int move = moves.moves[i];
         Position backup;
         pos.copy_to(backup);
         
-        if (!pos.make_move(moves.moves[i], ALL_MOVES))
+        if (!pos.make_move(move, ALL_MOVES))
             continue;
         
         legal_moves++;
         pos.nodes++;
-        int score = -negamax(pos, depth - 1, -beta, -alpha, ply + 1);
+        
+        int score;
+        
+        // =====================================================================
+        // Late Move Reductions (LMR)
+        // Reduce search depth for late quiet moves that are unlikely to be good
+        // Safety gates: not in check, depth >= 3, move >= 4, not a capture/promotion
+        // =====================================================================
+        bool is_quiet = !get_move_capture(move) && !get_move_promoted(move);
+        bool can_reduce = !in_check && depth >= 3 && legal_moves >= 4 && is_quiet;
+        
+        if (can_reduce) {
+            // Get reduction from precomputed table
+            int reduction = lmr_table[std::min(depth, MAX_PLY - 1)][std::min(legal_moves, MAX_MOVES - 1)];
+            
+            // Reduce killer moves less (they proved good at this ply)
+            if (is_killer(move, ply)) reduction = std::max(0, reduction - 1);
+            
+            // Ensure we don't reduce below depth 1
+            int reduced_depth = std::max(1, depth - 1 - reduction);
+            
+            // Reduced-depth search with null window
+            score = -negamax(pos, reduced_depth, -alpha - 1, -alpha, ply + 1);
+            
+            // If reduced search fails high, re-search at full depth
+            if (score > alpha) {
+                score = -negamax(pos, depth - 1, -beta, -alpha, ply + 1);
+            }
+        } else {
+            // Full-depth search for early moves, captures, promotions, and when in check
+            score = -negamax(pos, depth - 1, -beta, -alpha, ply + 1);
+        }
         
         backup.copy_to(pos);
         
         if (score > best_score) {
             best_score = score;
-            best_move = moves.moves[i];
+            best_move = move;
         }
         
         if (score >= beta) {
+            // Store killer move for quiet moves that cause beta cutoffs
+            store_killer(move, ply);
+            
             // Store with BETA flag (lower bound - failed high)
             TT::store(hash_key, beta, depth, ply, TT::TT_BETA, best_move);
             return beta;
@@ -295,7 +393,7 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
 inline MoveList search(Position& pos, int depth) {
     MoveList moves;
     pos.generate_moves(moves);
-    order_moves(pos, moves);
+    order_moves(pos, moves, 0);  // Root level = ply 0
     sort_moves(moves);
     
     for (int i = 0; i < moves.count; i++) {

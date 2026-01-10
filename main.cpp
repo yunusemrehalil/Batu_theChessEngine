@@ -16,6 +16,7 @@
 #include "include/attacks.hpp"
 #include "include/nn_eval.hpp"
 #include "include/tt.hpp"
+#include "include/search.hpp"
 #include "include/uci.hpp"
 
 int main() {
@@ -25,6 +26,9 @@ int main() {
     // Initialize Zobrist hashing for TT
     TT::init_zobrist();
     TT::clear();
+    
+    // Initialize LMR reduction table
+    Search::init_lmr();
     
     // Initialize neural network (loads weights if available)
     NN::init("weights.txt");

@@ -135,6 +135,9 @@ inline void parse_go(Position& pos, char* command) {
     int best_score = 0;
     auto start = std::chrono::high_resolution_clock::now();
     
+    // Clear killer moves for new search
+    Search::clear_killers();
+    
     // Iterative deepening loop
     for (int depth = 1; depth <= max_depth; depth++) {
         MoveList moves = Search::search(pos, depth);
