@@ -233,8 +233,14 @@ inline char promoted_to_char(int piece) {
 }
 
 // =============================================================================
-// FEN Positions (for testing)
+// FEN Positions
 // =============================================================================
 
 inline const char* START_POSITION = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-inline const char* TRICKY_POSITION = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+inline const char* KIWIPETE_POSITION = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+
+// Benchmark positions (eval test + mate puzzles)
+inline const char* BENCH_EVAL_TEST = "K1B5/P2r4/1p1r1n2/4k3/8/3PPP2/8/8 w - - 0 1";           // SF: -6.0
+inline const char* BENCH_MATE_IN_2_A = "1q4b1/8/N2n1NQ1/2P2p2/B1k2rRr/1p1Rp2p/4K3/B7 w - - 0 1";
+inline const char* BENCH_MATE_IN_3 = "Q7/8/2K5/8/4N2R/3P4/3Pk3/8 w - - 0 1";
+inline const char* BENCH_MATE_IN_2_B = "7B/3B1p2/rP1p2R1/n2k1Pb1/N2Pp3/4P3/K2nN1r1/2R5 w - - 0 1";

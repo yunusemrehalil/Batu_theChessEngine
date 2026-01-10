@@ -181,43 +181,69 @@ inline void parse_go(Position& pos, char* command) {
 // =============================================================================
 
 inline void run_benchmark(Position& pos) {
-    const char* positions[] = {
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
-        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"  // Position 2
+    struct BenchPosition {
+        const char* name;
+        const char* fen;
+        int depth;
     };
-    const char* names[] = { "Starting Position", "Position 2 (Kiwipete)" };
-    int depths[] = { 5, 6, 7 };
+    
+    // Positions to test: start position + puzzles
+    BenchPosition positions[] = {
+        { "Starting Position", START_POSITION, 7 },
+        { "Eval Test (SF: -6.0)", BENCH_EVAL_TEST, 6 },
+        { "Mate in 3", BENCH_MATE_IN_3, 10 },
+        { "Mate in 2", BENCH_MATE_IN_2_B, 6 }
+    };
+    int num_positions = sizeof(positions) / sizeof(positions[0]);
     
     std::cout << "\n=== BATU CHESS ENGINE BENCHMARK ===" << std::endl;
-    std::cout << "With Alpha-Beta + TT + Move Ordering + NN Eval\n" << std::endl;
+    std::cout << "Alpha-Beta + TT + NMP + LMR + Killers + NN Eval\n" << std::endl;
     
-    for (int p = 0; p < 2; p++) {
-        std::cout << "### " << names[p] << " ###" << std::endl;
-        std::cout << "FEN: " << positions[p] << "\n" << std::endl;
+    long long total_nodes = 0;
+    long long total_time = 0;
+    
+    for (int i = 0; i < num_positions; i++) {
+        // Clear state (same as ucinewgame)
+        TT::clear();
+        Search::clear_killers();
         
-        for (int d = 0; d < 3; d++) {
-            // Clear TT for each test to get reproducible results
-            TT::clear();
-            
-            pos.parse_fen(positions[p]);
-            pos.nodes = 0;
-            
-            auto start = std::chrono::high_resolution_clock::now();
-            MoveList moves = Search::search(pos, depths[d]);
-            auto end = std::chrono::high_resolution_clock::now();
-            
-            int best_move = Search::find_best_move(pos, moves);
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            
-            std::cout << "Depth " << depths[d] << ": ";
-            std::cout << duration.count() << " ms, ";
-            std::cout << pos.nodes << " nodes, ";
-            std::cout << "Best: ";
-            Position::print_move(best_move);
-            std::cout << std::endl;
+        pos.parse_fen(positions[i].fen);
+        pos.nodes = 0;
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        // Iterative deepening (same as parse_go)
+        int best_move = 0;
+        int best_score = 0;
+        for (int depth = 1; depth <= positions[i].depth; depth++) {
+            MoveList moves = Search::search(pos, depth);
+            best_move = Search::find_best_move(pos, moves);
+            for (int j = 0; j < moves.count; j++) {
+                if (moves.moves[j] == best_move) {
+                    best_score = moves.scores[j];
+                    break;
+                }
+            }
         }
+        
+        auto end = std::chrono::high_resolution_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        
+        total_nodes += pos.nodes;
+        total_time += ms;
+        
+        std::cout << positions[i].name << " (depth " << positions[i].depth << "): ";
+        std::cout << ms << " ms, " << pos.nodes << " nodes, ";
+        std::cout << "score " << best_score << ", best ";
+        Position::print_move(best_move);
         std::cout << std::endl;
     }
+    
+    std::cout << "\nTotal: " << total_time << " ms, " << total_nodes << " nodes";
+    if (total_time > 0) {
+        std::cout << ", " << (total_nodes * 1000 / total_time) << " nps";
+    }
+    std::cout << std::endl;
 }
 
 // =============================================================================
@@ -260,6 +286,9 @@ inline void loop(Position& pos) {
         }
         
         if (std::strncmp(input, "ucinewgame", 10) == 0) {
+            // Clear search state for new game
+            TT::clear();
+            Search::clear_killers();
             parse_position(pos, (char*)"position startpos");
             continue;
         }

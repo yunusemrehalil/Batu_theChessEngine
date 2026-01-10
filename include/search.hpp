@@ -23,6 +23,20 @@ namespace Search {
 constexpr int MAX_QUIESCENCE_DEPTH = 8;
 constexpr int MAX_PLY = 64;
 
+// NMP (Null Move Pruning) parameters
+constexpr int NMP_MIN_DEPTH = 3;           // Only try NMP at depth >= 3
+constexpr int NMP_REDUCTION = 3;           // R=3 (search depth - 1 - R)
+
+// LMR (Late Move Reductions) parameters  
+constexpr int LMR_MIN_DEPTH = 3;           // Only reduce at depth >= 3
+constexpr int LMR_MIN_MOVE_COUNT = 4;      // Only reduce move 4 onwards
+
+// Move ordering score ranges (lower = better, searched first)
+constexpr int SCORE_TT_MOVE = -1000000;    // TT move: highest priority
+constexpr int SCORE_CAPTURE_BASE = -900000; // Captures: -900000 range
+constexpr int SCORE_KILLER_1 = -700000;    // First killer move
+constexpr int SCORE_KILLER_2 = -600000;    // Second killer move
+
 // =============================================================================
 // Killer Moves Table
 // Two killer moves per ply - quiet moves that caused beta cutoffs
@@ -77,6 +91,28 @@ inline void init_lmr() {
 }
 
 // =============================================================================
+// Helper: Get captured piece at target square
+// Returns piece type (0-11) or NO_PIECE if no capture
+// =============================================================================
+inline int get_captured_piece(const Position& pos, int target_sq) {
+    int start = (pos.side == WHITE) ? p : P;
+    int end = (pos.side == WHITE) ? k : K;
+    
+    for (int pc = start; pc <= end; pc++) {
+        if (get_bit(pos.piece_bitboards[pc], target_sq)) {
+            return pc;
+        }
+    }
+    return NO_PIECE;
+}
+
+// Get absolute piece value (for captures/delta pruning)
+inline int get_piece_value_abs(int piece) {
+    // PIECE_VALUES has negative values for black pieces, take absolute
+    return (PIECE_VALUES[piece] < 0) ? -PIECE_VALUES[piece] : PIECE_VALUES[piece];
+}
+
+// =============================================================================
 // Move Ordering
 // =============================================================================
 
@@ -91,23 +127,18 @@ inline void order_moves(Position& pos, MoveList& moves, int ply = 0) {
         
         // MVV-LVA for captures (highest priority after TT move)
         if (get_move_capture(move)) {
-            int target_piece = P;
-            int start = (pos.side == WHITE) ? p : P;
-            int end = (pos.side == WHITE) ? k : K;
+            int target_piece = get_captured_piece(pos, target_square);
+            if (target_piece == NO_PIECE) target_piece = P;  // Fallback (shouldn't happen)
             
-            for (int bb_piece = start; bb_piece <= end; bb_piece++) {
-                if (get_bit(pos.piece_bitboards[bb_piece], target_square)) {
-                    target_piece = bb_piece;
-                    break;
-                }
-            }
-            // Captures: -900000 to -800000 range (lower = better)
-            moves.score_guess[i] = -900000 + (10 * PIECE_VALUES[target_piece] - PIECE_VALUES[source_piece]);
+            // MVV-LVA: prioritize capturing high-value pieces with low-value pieces
+            // Score range: SCORE_CAPTURE_BASE ± offset (lower = better, negative scores)
+            int victim_value = get_piece_value_abs(target_piece);
+            int attacker_value = get_piece_value_abs(source_piece);
+            moves.score_guess[i] = SCORE_CAPTURE_BASE + (10 * victim_value - attacker_value);
         }
         // Killer moves (high priority for quiet moves)
         else if (is_killer(move, ply)) {
-            // Killers: -700000 range
-            moves.score_guess[i] = (move == killer_moves[ply][0]) ? -700000 : -600000;
+            moves.score_guess[i] = (move == killer_moves[ply][0]) ? SCORE_KILLER_1 : SCORE_KILLER_2;
         }
         // Quiet moves
         else {
@@ -167,22 +198,23 @@ inline void sort_moves(MoveList& moves) {
 // Quiescence Search - Resolve Tactical Positions
 // =============================================================================
 
-// Delta margin for promotions (queen - pawn value)
+// Delta margin for futility pruning (covers promotion potential)
 constexpr int DELTA_MARGIN = 200;
 
-// Piece values for delta pruning (absolute values, indexed by piece type)
-constexpr int CAPTURE_VALUES[12] = {
-    100, 500, 300, 320, 1000, 10000,  // White: P, R, N, B, Q, K
-    100, 500, 300, 320, 1000, 10000   // Black: p, r, n, b, q, k (same absolute values)
-};
+// Margin for detecting mate scores (avoid NMP near checkmates)
+constexpr int MATE_SCORE_MARGIN = 100;
+
+// =============================================================================
+// Evaluation Helper (avoids duplicating NN/classic switch)
+// =============================================================================
+inline int get_eval(const Position& pos) {
+    return (UseNN && NN::nn_loaded) ? 
+           NN::evaluate(pos.piece_bitboards, pos.side) : pos.evaluate();
+}
 
 inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
     // Standing pat score
-    int stand_pat = (UseNN && NN::nn_loaded) ? 
-                    NN::evaluate(pos.piece_bitboards, pos.side) : 
-                    pos.evaluate();
-    
-    pos.nodes++;
+    int stand_pat = get_eval(pos);
     
     // Depth limit to prevent explosion
     if (ply >= MAX_QUIESCENCE_DEPTH) return stand_pat;
@@ -207,20 +239,11 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
         // If stand_pat + captured_piece + margin < alpha, this capture is futile
         // =====================================================================
         int target_sq = get_move_target(move);
-        int captured_piece = NO_PIECE;
-        int start = (pos.side == WHITE) ? p : P;
-        int end = (pos.side == WHITE) ? k : K;
-        
-        for (int pc = start; pc <= end; pc++) {
-            if (get_bit(pos.piece_bitboards[pc], target_sq)) {
-                captured_piece = pc;
-                break;
-            }
-        }
+        int captured_piece = get_captured_piece(pos, target_sq);
         
         // Skip if capture can't raise alpha (with margin for promotions)
         if (captured_piece != NO_PIECE) {
-            int gain = CAPTURE_VALUES[captured_piece];
+            int gain = get_piece_value_abs(captured_piece);
             if (stand_pat + gain + DELTA_MARGIN < alpha) continue;
         }
         
@@ -228,6 +251,8 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
         pos.copy_to(backup);
         
         if (!pos.make_move(move, ALL_MOVES)) continue;
+        
+        pos.nodes++;  // Count nodes consistently with negamax (after legal move)
         
         int score = -quiescence(pos, -beta, -alpha, ply + 1);
         backup.copy_to(pos);
@@ -265,10 +290,9 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
     // Null Move Pruning (NMP)
     // Safety gates: not in check, eval >= beta, non-pawn material, no mate scores
     // =========================================================================
-    if (do_null && !in_check && depth >= 3 && std::abs(beta) < CHECKMATE_SCORE - 100) {
+    if (do_null && !in_check && depth >= NMP_MIN_DEPTH && std::abs(beta) < CHECKMATE_SCORE - MATE_SCORE_MARGIN) {
         // Get static eval for the safety gate
-        int eval = (UseNN && NN::nn_loaded) ? 
-                   NN::evaluate(pos.piece_bitboards, pos.side) : pos.evaluate();
+        int eval = get_eval(pos);
         
         // Only try NMP if position looks good (eval >= beta)
         if (eval >= beta) {
@@ -283,8 +307,8 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
                 pos.side ^= 1;
                 pos.enpassant = NO_SQUARE;
                 
-                // R=3 reduction, depth floor at 1
-                int score = -negamax(pos, std::max(1, depth - 4), -beta, -beta + 1, ply + 1, false);
+                // R=3 reduction (depth - 1 - R), depth floor at 1
+                int score = -negamax(pos, std::max(1, depth - 1 - NMP_REDUCTION), -beta, -beta + 1, ply + 1, false);
                 backup.copy_to(pos);
                 
                 if (score >= beta) return beta;
@@ -301,7 +325,7 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
     if (tt_move != 0) {
         for (int i = 0; i < moves.count; i++) {
             if (moves.moves[i] == tt_move) {
-                moves.score_guess[i] = -1000000;  // Highest priority
+                moves.score_guess[i] = SCORE_TT_MOVE;  // Highest priority
                 break;
             }
         }
@@ -332,7 +356,7 @@ inline int negamax(Position& pos, int depth, int alpha, int beta, int ply = 0, b
         // Safety gates: not in check, depth >= 3, move >= 4, not a capture/promotion
         // =====================================================================
         bool is_quiet = !get_move_capture(move) && !get_move_promoted(move);
-        bool can_reduce = !in_check && depth >= 3 && legal_moves >= 4 && is_quiet;
+        bool can_reduce = !in_check && depth >= LMR_MIN_DEPTH && legal_moves >= LMR_MIN_MOVE_COUNT && is_quiet;
         
         if (can_reduce) {
             // Get reduction from precomputed table

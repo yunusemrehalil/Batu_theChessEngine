@@ -13,7 +13,26 @@ A UCI-compatible chess engine written in C++17 with neural network evaluation.
 - **Iterative Deepening**: Searches depth 1, 2, 3... with time management
 - **Transposition Table**: Zobrist hashing with 2^20 entries (~32MB), stores EXACT/ALPHA/BETA bounds
 - **Quiescence Search**: Resolves tactical positions by searching captures (max depth 8)
-- **Move Ordering**: MVV-LVA + TT move priority + center control + development bonuses
+
+### Search Optimizations
+- **Null Move Pruning (NMP)**: Skips search for positions where opponent can't beat beta
+  - Depth ≥ 3, not in check, eval ≥ beta, non-pawn material present
+  - Reduction R=3: searches at `depth - 1 - R` (effectively depth-4)
+- **Late Move Reductions (LMR)**: Reduces depth for late quiet moves
+  - Depth ≥ 3, move count ≥ 4, quiet moves only, not in check
+  - Log-based reduction: `R = 0.75 + log(depth) * log(move_count) / 2.25`
+  - Killers reduced less (proven good at this ply)
+- **Delta Pruning**: Prunes futile captures in quiescence search
+  - Skips captures where `stand_pat + captured_value + 200 < alpha`
+- **Killer Moves**: Stores 2 quiet moves per ply that caused beta cutoffs
+  - Searched with high priority after captures
+
+### Move Ordering
+- **Priority (highest to lowest)**:
+  1. TT move (hash move from transposition table)
+  2. Captures (MVV-LVA: Most Valuable Victim - Least Valuable Attacker)
+  3. Killer moves (quiet moves that caused beta cutoffs)
+  4. Quiet moves (promotions, center control, development bonuses)
 - **Proper Mate Detection**: Returns `CHECKMATE_SCORE - ply` for shortest mate path
 
 ### Evaluation
@@ -21,6 +40,7 @@ A UCI-compatible chess engine written in C++17 with neural network evaluation.
   - Input: 12 pieces × 64 squares = 768 binary features
   - Hidden layers: ReLU activation
   - Output: tanh scaled to centipawns (×600)
+  - **Sparse First-Layer Optimization**: Only computes non-zero inputs (~32 active pieces max)
 - **Fallback Evaluation**: Material counting when NN weights unavailable
 
 ### Interface
@@ -108,35 +128,26 @@ quit
 
 ## Benchmark Results
 
-**Date**: January 6, 2026  
-**System**: Windows with MinGW g++ 13.2.0, -O3 optimization  
-**Configuration**: Alpha-Beta Pruning + Move Ordering (MVV-LVA)
+**Date**: January 11, 2026  
+**System**: Windows with MSVC, Release optimization  
+**Configuration**: Alpha-Beta + TT + NMP + LMR + Killers + NN Eval
 
-### Starting Position
-`rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`
+```
+Starting Position (depth 7): 2460 ms, 349826 nodes, score 29, best g2g3
+Eval Test (SF: -6.0) (depth 6): 51 ms, 11098 nodes, score -199, best c8d7
+Mate in 3 (depth 10): 2832 ms, 877343 nodes, score 11107, best a8a4
+Mate in 2 (depth 6): 4754 ms, 753786 nodes, score 11109, best h8e5
 
-| Depth | Time (ms) | Nodes | Best Move |
-|-------|-----------|-------|-----------|
-| 5 | 25 | 150,834 | e2e4 |
-| 6 | 98 | 1,096,768 | b1c3 |
-| 7 | 859 | 6,428,787 | b1c3 |
+Total: ~10s, ~2M nodes, ~200k nps
+```
 
-### Position 2 (Kiwipete)
-`r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -`
-
-| Depth | Time (ms) | Nodes | Best Move |
-|-------|-----------|-------|-----------|
-| 5 | 442 | 795,043 | e2a6 |
-| 6 | 1,453 | 9,036,672 | e2a6 |
-| 7 | 10,756 | 31,160,887 | d5e6 |
-
-### Performance Improvement (vs. Legacy Code from Nov 2023)
-
-| Position | Depth | Old Time | New Time | Speedup |
-|----------|-------|----------|----------|---------|
-| Starting | 6 | 991 ms | 98 ms | **~10x faster** |
-| Starting | 7 | 17,665 ms | 859 ms | **~20x faster** |
-| Position 2 | 5 | 3,079 ms | 442 ms | **~7x faster** |
+### Test Positions
+| Position | FEN | Expected |
+|----------|-----|----------|
+| Starting | `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1` | ~0cp |
+| Eval Test | `K1B5/P2r4/1p1r1n2/4k3/8/3PPP2/8/8 w - - 0 1` | SF: -600cp |
+| Mate in 3 | `Q7/8/2K5/8/4N2R/3P4/3Pk3/8 w - - 0 1` | Find mate |
+| Mate in 2 | `7B/3B1p2/rP1p2R1/n2k1Pb1/N2Pp3/4P3/K2nN1r1/2R5 w - - 0 1` | Find mate |
 
 ---
 
