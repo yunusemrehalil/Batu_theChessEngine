@@ -185,22 +185,29 @@ inline void run_benchmark(Position& pos) {
         const char* name;
         const char* fen;
         int depth;
+        bool expect_mate;  // true if position should find mate
     };
     
     // Positions to test: start position + puzzles
     BenchPosition positions[] = {
-        { "Starting Position", START_POSITION, 7 },
-        { "Eval Test (SF: -6.0)", BENCH_EVAL_TEST, 6 },
-        { "Mate in 3", BENCH_MATE_IN_3, 10 },
-        { "Mate in 2", BENCH_MATE_IN_2_B, 6 }
+        { "Starting Position", START_POSITION, 7, false },
+        { "Eval Test (SF: -6.0)", BENCH_EVAL_TEST, 6, false },
+        { "Mate in 3", BENCH_MATE_IN_3, 10, true },
+        { "Mate in 2", BENCH_MATE_IN_2_B, 6, true }
     };
     int num_positions = sizeof(positions) / sizeof(positions[0]);
     
     std::cout << "\n=== BATU CHESS ENGINE BENCHMARK ===" << std::endl;
-    std::cout << "Alpha-Beta + TT + NMP + LMR + Killers + NN Eval\n" << std::endl;
+    std::cout << "Config: Alpha-Beta + TT + NMP + LMR + Killers";
+    std::cout << (UseNN && NN::nn_loaded ? " + NN Eval" : " + Static Eval") << "\n" << std::endl;
+    
+    // Table header
+    std::cout << "| Position             | Depth | Time(ms) | Nodes      | Score  | Best Move | Status |" << std::endl;
+    std::cout << "|----------------------|-------|----------|------------|--------|-----------|--------|" << std::endl;
     
     long long total_nodes = 0;
     long long total_time = 0;
+    int passed = 0;
     
     for (int i = 0; i < num_positions; i++) {
         // Clear state (same as ucinewgame)
@@ -232,18 +239,63 @@ inline void run_benchmark(Position& pos) {
         total_nodes += pos.nodes;
         total_time += ms;
         
-        std::cout << positions[i].name << " (depth " << positions[i].depth << "): ";
-        std::cout << ms << " ms, " << pos.nodes << " nodes, ";
-        std::cout << "score " << best_score << ", best ";
-        Position::print_move(best_move);
-        std::cout << std::endl;
+        // Invariant checks:
+        // 1. Best move must be non-zero (engine didn't crash)
+        // 2. If expect_mate, score should be near CHECKMATE_SCORE
+        bool move_ok = (best_move != 0);
+        bool mate_ok = !positions[i].expect_mate || (std::abs(best_score) > CHECKMATE_SCORE - 100);
+        bool test_passed = move_ok && mate_ok;
+        if (test_passed) passed++;
+        
+        // Format score (show "mate N" for mate scores)
+        char score_str[16];
+        if (std::abs(best_score) > CHECKMATE_SCORE - 100) {
+            int mate_in = (CHECKMATE_SCORE - std::abs(best_score) + 1) / 2;
+            std::snprintf(score_str, sizeof(score_str), "M%d", best_score > 0 ? mate_in : -mate_in);
+        } else {
+            std::snprintf(score_str, sizeof(score_str), "%d", best_score);
+        }
+        
+        // Format best move
+        char move_str[8] = {0};
+        std::snprintf(move_str, sizeof(move_str), "%s%s%c",
+            SQUARE_TO_COORD[get_move_source(best_move)],
+            SQUARE_TO_COORD[get_move_target(best_move)],
+            promoted_to_char(get_move_promoted(best_move)));
+        
+        // Print table row
+        std::printf("| %-20s | %5d | %8lld | %10ld | %6s | %-9s | %s |\n",
+            positions[i].name, positions[i].depth, (long long)ms, pos.nodes,
+            score_str, move_str, test_passed ? "PASS" : "FAIL");
     }
     
-    std::cout << "\nTotal: " << total_time << " ms, " << total_nodes << " nodes";
+    std::cout << "|----------------------|-------|----------|------------|--------|-----------|--------|" << std::endl;
+    
+    // Summary
+    std::cout << "\nSummary: " << passed << "/" << num_positions << " passed";
+    std::cout << ", Total: " << total_time << " ms, " << total_nodes << " nodes";
     if (total_time > 0) {
         std::cout << ", " << (total_nodes * 1000 / total_time) << " nps";
     }
     std::cout << std::endl;
+    
+    // TT reuse test: run first position again, should be faster
+    std::cout << "\nTT Reuse Test (re-run pos 1 without clearing TT):" << std::endl;
+    pos.parse_fen(positions[0].fen);
+    pos.nodes = 0;
+    Search::clear_killers();  // Clear killers but NOT TT
+    
+    auto start2 = std::chrono::high_resolution_clock::now();
+    int best_move2 = 0;
+    for (int depth = 1; depth <= positions[0].depth; depth++) {
+        MoveList moves = Search::search(pos, depth);
+        best_move2 = Search::find_best_move(pos, moves);
+    }
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - start2).count();
+    
+    std::cout << "  First run: " << total_time << " ms (for all positions)" << std::endl;
+    std::cout << "  TT reuse run (pos 1 only): " << ms2 << " ms, " << pos.nodes << " nodes" << std::endl;
 }
 
 // =============================================================================

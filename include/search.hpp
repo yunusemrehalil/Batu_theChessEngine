@@ -213,26 +213,35 @@ inline int get_eval(const Position& pos) {
 }
 
 inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
+    // Check if side to move is in check
+    int king_sq = Position::get_ls1b_index(pos.piece_bitboards[pos.side == WHITE ? K : k]);
+    bool in_check = pos.is_square_attacked(king_sq, pos.side ^ 1);
+    
     // Standing pat score
     int stand_pat = get_eval(pos);
     
     // Depth limit to prevent explosion
     if (ply >= MAX_QUIESCENCE_DEPTH) return stand_pat;
     
-    // Beta cutoff (standing pat)
-    if (stand_pat >= beta) return beta;
-    if (stand_pat > alpha) alpha = stand_pat;
+    // Standing pat is illegal when in check - must respond to check
+    if (!in_check) {
+        if (stand_pat >= beta) return beta;
+        if (stand_pat > alpha) alpha = stand_pat;
+    }
     
     MoveList moves;
     pos.generate_moves(moves);
     order_moves(pos, moves);
     sort_moves(moves);
     
+    int legal_moves = 0;
+    
     for (int i = 0; i < moves.count; i++) {
         int move = moves.moves[i];
         
-        // Only search captures
-        if (!get_move_capture(move)) continue;
+        // When in check: search ALL evasions (not just captures)
+        // When not in check: only search captures
+        if (!in_check && !get_move_capture(move)) continue;
         
         // =====================================================================
         // Delta Pruning: skip captures that can't raise alpha
@@ -252,6 +261,7 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
         
         if (!pos.make_move(move, ALL_MOVES)) continue;
         
+        legal_moves++;
         pos.nodes++;  // Count nodes consistently with negamax (after legal move)
         
         int score = -quiescence(pos, -beta, -alpha, ply + 1);
@@ -259,6 +269,11 @@ inline int quiescence(Position& pos, int alpha, int beta, int ply = 0) {
         
         if (score >= beta) return beta;
         if (score > alpha) alpha = score;
+    }
+    
+    // If in check and no legal moves, it's checkmate
+    if (in_check && legal_moves == 0) {
+        return -CHECKMATE_SCORE + ply;
     }
     
     return alpha;

@@ -171,11 +171,8 @@ public:
         
         for (int piece = P; piece <= k; piece++) {
             U64 bb = piece_bitboards[piece];
-            while (bb) {
-                get_ls1b_index(bb);
-                score += PIECE_VALUES[piece];
-                bb &= bb - 1;
-            }
+            int piece_count = count_bits(bb);
+            score += PIECE_VALUES[piece] * piece_count;
         }
         
         return (side == WHITE) ? score : -score;
