@@ -170,7 +170,7 @@ inline int evaluate(const U64* piece_bitboards, int side) {
 
 inline void init(const std::string& weights_path = "weights.txt") {
     if (load_weights(weights_path)) {
-        std::cerr << "Neural network loaded from: " << weights_path << std::endl;
+        std::cout << "Neural network loaded from: " << weights_path << std::endl;
     }
 }
 
