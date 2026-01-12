@@ -87,13 +87,17 @@ inline void parse_position(Position& pos, char* command) {
 }
 
 // =============================================================================
-// Go Command
+// Go Command - Adaptive Time Management
 // =============================================================================
 
 inline void parse_go(Position& pos, char* command) {
     int max_depth = 64;
-    int time_limit_ms = 0;
-    int move_time = 0;
+    int optimal_time = 0;   // Target time to use
+    int maximum_time = 0;   // Hard limit (don't exceed)
+    int our_time = 0;
+    int our_inc = 0;
+    int moves_to_go = 0;
+    constexpr int MOVE_OVERHEAD = 50;  // Safety margin in ms
     
     // Parse depth limit
     char* depth_str = std::strstr(command, "depth");
@@ -104,35 +108,85 @@ inline void parse_go(Position& pos, char* command) {
     // Parse movetime (fixed time per move)
     char* movetime_str = std::strstr(command, "movetime");
     if (movetime_str != nullptr) {
-        move_time = std::atoi(movetime_str + 9);
-        time_limit_ms = move_time;
+        optimal_time = std::atoi(movetime_str + 9);
+        maximum_time = optimal_time;
+    }
+    
+    // Parse movestogo (moves until next time control)
+    char* mtg_str = std::strstr(command, "movestogo");
+    if (mtg_str != nullptr) {
+        moves_to_go = std::atoi(mtg_str + 10);
     }
     
     // Parse wtime/btime (remaining time on clock)
     char* wtime_str = std::strstr(command, "wtime");
     char* btime_str = std::strstr(command, "btime");
-    if (wtime_str || btime_str) {
-        int our_time = 0;
-        if (pos.side == WHITE && wtime_str) {
-            our_time = std::atoi(wtime_str + 6);
-        } else if (pos.side == BLACK && btime_str) {
-            our_time = std::atoi(btime_str + 6);
+    
+    // Parse winc/binc (increment per move)
+    char* winc_str = std::strstr(command, "winc");
+    char* binc_str = std::strstr(command, "binc");
+    
+    if (pos.side == WHITE) {
+        if (wtime_str) our_time = std::atoi(wtime_str + 6);
+        if (winc_str) our_inc = std::atoi(winc_str + 5);
+    } else {
+        if (btime_str) our_time = std::atoi(btime_str + 6);
+        if (binc_str) our_inc = std::atoi(binc_str + 5);
+    }
+    
+    // Calculate time for this move (only if not already set by movetime)
+    if (our_time > 0 && optimal_time == 0) {
+        if (moves_to_go > 0) {
+            // Tournament time control: x moves in y minutes
+            // Distribute time evenly with increment bonus
+            int time_for_moves = our_time + our_inc * (moves_to_go - 1) - MOVE_OVERHEAD * moves_to_go;
+            optimal_time = std::max(10, time_for_moves / moves_to_go);
+            maximum_time = std::min(our_time - MOVE_OVERHEAD, optimal_time * 3);
+        } else {
+            // Sudden death or increment time control
+            // Adaptive scaling based on remaining time
+            int base_moves = 30;  // Assume ~30 moves left on average
+            
+            // Scale based on remaining time (use more time early, less when low)
+            if (our_time > 60000) {
+                base_moves = 40;  // Plenty of time, be conservative
+            } else if (our_time < 10000) {
+                base_moves = 20;  // Low on time, move faster
+            } else if (our_time < 5000) {
+                base_moves = 15;  // Very low, panic mode
+            }
+            
+            // Calculate optimal time with increment bonus
+            optimal_time = our_time / base_moves + our_inc * 3 / 4;
+            
+            // Maximum time: can extend up to 2.5x optimal, but capped
+            maximum_time = optimal_time * 5 / 2;
+            
+            // Never use more than 20% of remaining time in one move
+            maximum_time = std::min(maximum_time, our_time / 5);
+            
+            // Safety: always leave some buffer
+            maximum_time = std::min(maximum_time, our_time - MOVE_OVERHEAD);
+            optimal_time = std::min(optimal_time, maximum_time);
         }
-        // Simple time management: use ~2.5% of remaining time
-        if (our_time > 0 && time_limit_ms == 0) {
-            time_limit_ms = our_time / 40;  // Assume ~40 moves left
-            if (time_limit_ms < 100) time_limit_ms = 100;  // Min 100ms
-        }
+        
+        // Minimum time bounds
+        optimal_time = std::max(optimal_time, 10);
+        maximum_time = std::max(maximum_time, optimal_time);
     }
     
     // Parse infinite (no time limit, just depth)
     if (std::strstr(command, "infinite")) {
-        time_limit_ms = 0;  // No time limit
+        optimal_time = 0;
+        maximum_time = 0;
     }
     
     pos.nodes = 0;
     int best_move = 0;
     int best_score = 0;
+    int prev_best_move = 0;
+    int prev_score = 0;
+    int stable_count = 0;
     auto start = std::chrono::high_resolution_clock::now();
     
     // Clear killer moves for new search
@@ -151,6 +205,14 @@ inline void parse_go(Position& pos, char* command) {
             }
         }
         
+        // Track best move stability for time management
+        if (best_move == prev_best_move) {
+            stable_count++;
+        } else {
+            stable_count = 0;
+        }
+        prev_best_move = best_move;
+        
         auto now = std::chrono::high_resolution_clock::now();
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
         
@@ -164,10 +226,48 @@ inline void parse_go(Position& pos, char* command) {
         }
         std::cout << std::endl;
         
-        // Time check: stop if we've used > 50% of allotted time
-        // (next iteration would likely exceed limit)
-        if (time_limit_ms > 0 && elapsed_ms > time_limit_ms / 2) {
-            break;
+        // Time management decisions
+        if (optimal_time > 0) {
+            // Hard stop: never exceed maximum time
+            if (elapsed_ms >= maximum_time) {
+                break;
+            }
+            
+            // Calculate adjusted optimal time based on:
+            // 1. Best move stability (stable = use less time)
+            // 2. Score drop (dropping = use more time)
+            double time_factor = 1.0;
+            
+            // Stability factor: if best move is stable, reduce time
+            if (stable_count >= 4) {
+                time_factor *= 0.6;  // Very stable, save time
+            } else if (stable_count >= 2) {
+                time_factor *= 0.8;  // Somewhat stable
+            }
+            
+            // Score drop factor: if score is falling, use more time
+            if (depth > 1) {
+                int score_drop = prev_score - best_score;
+                if (score_drop > 50) {
+                    time_factor *= 1.3;  // Significant drop, think more
+                } else if (score_drop > 20) {
+                    time_factor *= 1.15;
+                }
+            }
+            prev_score = best_score;
+            
+            int adjusted_optimal = static_cast<int>(optimal_time * time_factor);
+            
+            // Stop if we've exceeded adjusted optimal time
+            if (elapsed_ms >= adjusted_optimal) {
+                break;
+            }
+            
+            // Estimate if next iteration would exceed maximum
+            // (branching factor ~2-3, next depth takes ~2.5x current)
+            if (depth >= 4 && elapsed_ms * 3 > maximum_time) {
+                break;
+            }
         }
     }
     

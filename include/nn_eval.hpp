@@ -4,9 +4,24 @@
 // Batu Chess Engine - Neural Network Evaluation
 // =============================================================================
 //
-// Simple feedforward neural network for position evaluation.
-// Architecture: 768 -> 256 -> 32 -> 1
-// Input: 12 pieces × 64 squares = 768 binary features
+// Neural network with PSQT (Piece-Square Table) skip connection.
+// 
+// Architecture:
+//     Input (768) ──┬──> PSQT (768->1, linear) ─────────┐
+//                   │                                    │
+//                   └──> fc1 (768->256, ReLU)           │
+//                           │                            │
+//                        fc2 (256->32, ReLU)            │
+//                           │                            │
+//                        fc3 (32->1) ──> positional     │
+//                                            │           │
+//                                            └──> + <────┘
+//                                                 │
+//                                              tanh(output)
+//
+// Key insight: Material values flow directly through linear PSQT layer,
+// making it trivial to learn piece values. Deeper layers learn positional
+// adjustments only.
 //
 // =============================================================================
 
@@ -37,6 +52,10 @@ constexpr int SCALE_FACTOR = 600;   // tanh output × 600 = centipawns
 // Network Weights (Global)
 // =============================================================================
 
+// PSQT skip connection weights (direct material path)
+inline float psqt_weights[INPUT_SIZE];
+
+// Positional network weights
 inline float weights_input_hidden1[INPUT_SIZE * HIDDEN1_SIZE];
 inline float bias_hidden1[HIDDEN1_SIZE];
 inline float weights_hidden1_hidden2[HIDDEN1_SIZE * HIDDEN2_SIZE];
@@ -64,7 +83,12 @@ inline bool load_weights(const std::string& path) {
         return false;
     }
     
-    // Read weights in order: layer1 weights, layer1 bias, layer2 weights, etc.
+    // Read weights in order: PSQT, then layer1, layer2, layer3
+    
+    // PSQT skip connection weights [768]
+    for (int i = 0; i < INPUT_SIZE; i++) {
+        if (!(file >> psqt_weights[i])) return false;
+    }
     
     // Layer 1: input -> hidden1
     for (int i = 0; i < INPUT_SIZE * HIDDEN1_SIZE; i++) {
@@ -127,7 +151,17 @@ inline int evaluate(const U64* piece_bitboards, int side) {
     }
     
     // =========================================================================
-    // Step 2: Layer 1 - Sparse accumulation (only iterate active features)
+    // Step 2: PSQT skip connection (direct material evaluation)
+    // Material flows directly through a linear layer, making piece values
+    // trivial to learn. Only ~32 additions for active pieces!
+    // =========================================================================
+    float psqt = 0.0f;
+    for (int k = 0; k < num_active; k++) {
+        psqt += psqt_weights[active_features[k]];
+    }
+    
+    // =========================================================================
+    // Step 3: Layer 1 - Sparse accumulation (only iterate active features)
     // OLD: 256 neurons × 768 checks = 196,608 operations
     // NEW: 256 neurons × ~32 active = ~8,192 operations
     // =========================================================================
@@ -152,12 +186,16 @@ inline int evaluate(const U64* piece_bitboards, int side) {
         hidden2[j] = relu(sum);
     }
     
-    // Layer 3: hidden2 -> output (tanh)
-    float output = bias_output;
+    // Layer 3: hidden2 -> output (positional component)
+    float positional = bias_output;
     for (int i = 0; i < HIDDEN2_SIZE; i++) {
-        output += hidden2[i] * weights_hidden2_output[i];
+        positional += hidden2[i] * weights_hidden2_output[i];
     }
-    output = std::tanh(output);
+    
+    // =========================================================================
+    // Combine PSQT (material) + positional, then apply tanh
+    // =========================================================================
+    float output = std::tanh(psqt + positional);
     
     // Convert to centipawns and adjust for side to move
     int score = static_cast<int>(output * SCALE_FACTOR);

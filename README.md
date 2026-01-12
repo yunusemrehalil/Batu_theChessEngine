@@ -73,7 +73,7 @@ Batu_theChessEngine/
 
 ## Neural Network
 
-The engine uses a simple feedforward neural network trained on ~1M Stockfish-labeled positions.
+The engine uses a feedforward neural network with PSQT skip connection, trained on ~1M labeled positions.
 
 ### Architecture
 ```
