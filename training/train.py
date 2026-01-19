@@ -17,6 +17,16 @@ import time
 import random
 
 # =============================================================================
+# Reproducibility - Set seeds for consistent training runs
+# =============================================================================
+
+SEED = 42
+random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)  # For multi-GPU
+# =============================================================================
 # Configuration
 # =============================================================================
 
@@ -25,7 +35,7 @@ CONFIG = {
     "output_dir": "checkpoints",
     "weights_file": "../weights.txt",
     
-    "max_samples": 1_000_000,  # Total samples to use
+    "max_samples": 2_000_000,  # Total samples to use
     "epochs": 10,
     "batch_size": 4096,
     "learning_rate": 0.001,
@@ -128,17 +138,51 @@ class ChessDataset(Dataset):
         return fen_to_tensor(fen), torch.tensor(target, dtype=torch.float32)
 
 
+def reservoir_sample(reservoir: list, item, max_size: int, count: int):
+    """
+    Reservoir sampling: maintains a random sample of max_size items
+    from a stream of 'count' items seen so far.
+    
+    Args:
+        reservoir: Current list of sampled items (modified in place)
+        item: New item to potentially add
+        max_size: Maximum reservoir size
+        count: Total items seen so far (1-indexed, including current item)
+    """
+    if len(reservoir) < max_size:
+        reservoir.append(item)
+    else:
+        # Replace existing item with probability max_size/count
+        j = random.randint(0, count - 1)
+        if j < max_size:
+            reservoir[j] = item
+
+
 def load_dataset(filepath: str):
     """
-    Load and parse CSV dataset with stratified sampling.
+    Load and parse CSV dataset with stratified reservoir sampling.
+    Uses reservoir sampling per bucket to keep memory bounded regardless
+    of input file size (handles 13M+ rows without OOM).
+    
     Returns list of (fen, normalized_target) tuples.
     """
-    # First pass: bucket positions by evaluation
-    buckets = {i: [] for i in range(len(CONFIG["eval_buckets"]))}
+    # Calculate target size per bucket for reservoir sampling
+    bucket_targets = {}
+    if CONFIG["use_stratified_sampling"] and CONFIG["max_samples"]:
+        for bucket_idx, (_, _, ratio) in enumerate(CONFIG["eval_buckets"]):
+            bucket_targets[bucket_idx] = int(CONFIG["max_samples"] * ratio)
+    else:
+        # Non-stratified: all goes to bucket 0
+        bucket_targets[0] = CONFIG["max_samples"] if CONFIG["max_samples"] else float('inf')
+    
+    # Reservoirs (bounded memory) and counters (for reservoir sampling probability)
+    reservoirs = {i: [] for i in bucket_targets.keys()}
+    bucket_counts = {i: 0 for i in bucket_targets.keys()}  # Total seen per bucket
     skipped = 0
     total_loaded = 0
     
     print(f"Loading dataset: {filepath}")
+    print(f"Using reservoir sampling (memory-bounded) for {len(bucket_targets)} buckets")
     start_time = time.time()
     
     with open(filepath, 'r') as f:
@@ -166,14 +210,28 @@ def load_dataset(filepath: str):
                 clamped = max(-CONFIG["clamp_score"], min(CONFIG["clamp_score"], score))
                 normalized = float(torch.tanh(torch.tensor(clamped / CONFIG["scale_factor"])))
                 
+                item = (fen, normalized)
+                
                 # Find bucket for this position
                 if CONFIG["use_stratified_sampling"]:
                     for bucket_idx, (low, high, _) in enumerate(CONFIG["eval_buckets"]):
                         if low <= score < high:
-                            buckets[bucket_idx].append((fen, normalized))
+                            bucket_counts[bucket_idx] += 1
+                            reservoir_sample(
+                                reservoirs[bucket_idx], 
+                                item, 
+                                bucket_targets[bucket_idx],
+                                bucket_counts[bucket_idx]
+                            )
                             break
                 else:
-                    buckets[0].append((fen, normalized))
+                    bucket_counts[0] += 1
+                    reservoir_sample(
+                        reservoirs[0], 
+                        item, 
+                        bucket_targets[0],
+                        bucket_counts[0]
+                    )
                 
                 total_loaded += 1
                 
@@ -184,31 +242,21 @@ def load_dataset(filepath: str):
     elapsed = time.time() - start_time
     print(f"Loaded {total_loaded:,} positions in {elapsed:.1f}s (skipped {skipped:,})")
     
-    # Stratified sampling
-    if CONFIG["use_stratified_sampling"] and CONFIG["max_samples"]:
-        data = []
-        print("\nStratified sampling:")
+    # Combine reservoirs into final dataset
+    data = []
+    if CONFIG["use_stratified_sampling"]:
+        print("\nStratified reservoir sampling results:")
         for bucket_idx, (low, high, ratio) in enumerate(CONFIG["eval_buckets"]):
-            target_count = int(CONFIG["max_samples"] * ratio)
-            available = len(buckets[bucket_idx])
-            sample_count = min(target_count, available)
-            
-            if available > 0:
-                sampled = random.sample(buckets[bucket_idx], sample_count)
-                data.extend(sampled)
-                print(f"  Bucket [{low:+6d}, {high:+6d}): {sample_count:,} / {available:,} (target: {target_count:,})")
-        
-        random.shuffle(data)
-        print(f"\nTotal sampled: {len(data):,}")
+            sampled = len(reservoirs[bucket_idx])
+            seen = bucket_counts[bucket_idx]
+            target = bucket_targets[bucket_idx]
+            data.extend(reservoirs[bucket_idx])
+            print(f"  Bucket [{low:+6d}, {high:+6d}): {sampled:,} sampled from {seen:,} seen (target: {target:,})")
     else:
-        # Fallback to random sampling
-        data = []
-        for b in buckets.values():
-            data.extend(b)
-        
-        if CONFIG["max_samples"] and len(data) > CONFIG["max_samples"]:
-            print(f"Random sampling {CONFIG['max_samples']:,} from {len(data):,}...")
-            data = random.sample(data, CONFIG["max_samples"])
+        data.extend(reservoirs[0])
+    
+    random.shuffle(data)
+    print(f"\nTotal sampled: {len(data):,}")
     
     return data
 
@@ -359,6 +407,10 @@ def train():
     # Load data
     all_data = load_dataset(CONFIG["data_file"])
     
+    # Shuffle unconditionally before split (stratified path already shuffles,
+    # but this ensures non-stratified path doesn't split in file order)
+    random.shuffle(all_data)
+    
     # Train/validation split
     val_size = int(len(all_data) * CONFIG["val_split"])
     train_size = len(all_data) - val_size
@@ -391,7 +443,9 @@ def train():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=3, verbose=True
     )
-    criterion = nn.MSELoss()
+    # SmoothL1Loss (Huber-like) is more robust to outliers than MSE
+    # Chess evals can have noise/extreme values, and tanh saturates
+    criterion = nn.SmoothL1Loss()
     
     # Create checkpoint directory
     os.makedirs(CONFIG["output_dir"], exist_ok=True)
